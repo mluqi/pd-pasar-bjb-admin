@@ -1,0 +1,63 @@
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
+const { userakses, user_level } = require('../../models')
+
+exports.signup = async (req, res) => {
+    try {
+        const {username, password, user_phone, user_email, user_level, user_foto, user_status } = req.body
+        
+        if (!username || !password || !user_phone || !user_email || !user_level || user_foto || user_status) {
+            return res.status(400).json({
+                message: "Data tidak lengkap"
+            })
+        }
+
+        const isExistUsername = await userakses.findOne({
+            where: {
+                username
+            }
+        })
+
+        if (isExistUsername) {
+            return res.status(400).json({
+                message: "Username sudah digunakan"
+            })
+        }
+
+        if (!user_email.includes("@")) {
+            return res.status(400).json({
+                message: "Email tidak valid"
+            })
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+        const newuserakses = await userakses.create({
+            user_phone,
+            user_email,
+            password: hashedPassword,
+            user_level,
+            user_foto,
+            user_status
+        })
+
+        return res.status(200).json({
+            message: "Berhasil daftar",
+            data: newuserakses
+        })
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+exports.signin = async (req, res) => {
+    try {
+        const {username, password} = req.body
+        if(!username || !password) {
+            return res.status(400).json({
+                message: "Data username dan password"
+            })
+        }
+    } catch (error) {
+        console.log(error)
+    }
+}
