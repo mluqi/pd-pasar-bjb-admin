@@ -13,18 +13,22 @@ const authMiddleware = async (req, res, next) => {
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userakses.findByPk(verified.id);
+    const user = await userakses.findByPk(verified.user_code);
 
-    if (user.accessToken !== token) {
+    if (user.user_validation !== token) {
       return res.status(401).json({ error: "Token revoked!" });
     }
 
-    req.userakses = {
+    req.user = {
       id: verified.user_code,
+      level: verified.level,
     };
+
+    console.log(req.user);
 
     next();
   } catch (error) {
+    console.log(error);
     res.status(400).json({ error: "Invalid token" });
   }
 };

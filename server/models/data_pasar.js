@@ -10,11 +10,18 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      data_pasar.hasMany(models.userakses)
+      data_pasar.hasMany(models.userakses, {
+        foreignKey: 'user_owner',
+        sourceKey: 'pasar_code',
+        as: 'users'
+      });      
     }
   }
   data_pasar.init({
-    pasar_code: DataTypes.STRING,
+    pasar_code: {
+      type: DataTypes.STRING,
+      primaryKey: true 
+    },
     pasar_nama: DataTypes.STRING,
     pasar_logo: DataTypes.TEXT,
     pasar_status: DataTypes.ENUM('A', 'N'),

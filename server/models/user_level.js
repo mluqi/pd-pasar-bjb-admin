@@ -14,7 +14,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   user_level.init({
-    level_code: DataTypes.STRING,
+    level_code: {
+      type: DataTypes.STRING,
+      primaryKey: true
+    },
     level_name: DataTypes.STRING
   }, {
     sequelize,
