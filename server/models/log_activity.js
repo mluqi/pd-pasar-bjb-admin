@@ -24,6 +24,8 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'LOG_ACTIVITY',
+    tableName: 'LOG_ACTIVITY',
+    timestamps: false,
   });
   return LOG_ACTIVITY;
 };

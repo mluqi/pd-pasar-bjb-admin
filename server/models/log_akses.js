@@ -22,6 +22,8 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     sequelize,
     modelName: 'LOG_AKSES',
+    tableName: 'LOG_AKSES',
+    timestamps: false,
   });
   return LOG_AKSES;
 };

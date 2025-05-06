@@ -53,7 +53,7 @@ exports.addPasar = async (req, res) => {
 
     if (lastPasar && lastPasar.pasar_code) {
       try {
-        const lastNum = parseInt(lastPasar.pasar_code.substring(3), 10); // Ambil angka setelah 'PSR'
+        const lastNum = parseInt(lastPasar.pasar_code.substring(3), 10); 
         if (!isNaN(lastNum)) {
           nextSequence = lastNum + 1;
         }

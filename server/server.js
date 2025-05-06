@@ -11,6 +11,7 @@ const userRoutes = require("./routes/userRoutes");
 const iuranRoutes = require("./routes/iuranRoutes");
 const pedagangRoutes = require("./routes/pedagangRoutes");
 const lapakRoutes = require("./routes/lapakRoutes");
+const logRoutes = require("./routes/logRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -28,11 +29,12 @@ app.use("/api/user", userRoutes);
 app.use("/api/iuran", iuranRoutes);
 app.use("/api/pedagang", pedagangRoutes);
 app.use("/api/lapak", lapakRoutes);
+app.use("/api", logRoutes);
 
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

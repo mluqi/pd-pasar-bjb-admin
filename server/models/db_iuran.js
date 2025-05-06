@@ -8,10 +8,10 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      DB_IURAN.belongsTo(models.DB_LAPAK, {
-        foreignKey: "LAPAK_CODE",
-        targetKey: "LAPAK_CODE",
-      });
+      // DB_IURAN.belongsTo(models.DB_LAPAK, {
+      //   foreignKey: "LAPAK_CODE",
+      //   targetKey: "LAPAK_CODE",
+      // });
 
       DB_IURAN.belongsTo(models.DB_PEDAGANG, {
         foreignKey: "IURAN_PEDAGANG",
@@ -62,6 +62,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "DB_IURAN",
+      tableName: "DB_IURAN",
     }
   );
   return DB_IURAN;
