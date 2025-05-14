@@ -2,6 +2,8 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const { userakses, user_level, data_pasar } = require("../models");
 const { Op } = require("sequelize");
+const { addLogAkses, addLogActivity } = require("./logController");
+const { getClientIp, getClientBrowser } = require("../utils/requestUtils");
 
 exports.signup = async (req, res) => {
   if (!req.user || !req.user.id || !req.user.level) {
@@ -11,6 +13,9 @@ exports.signup = async (req, res) => {
   }
   const creatorId = req.user.id;
   const creatorLevel = req.user.level;
+
+  const userName = req.user.name;
+  const userOwner = req.user.owner;
 
   try {
     const {
@@ -205,12 +210,28 @@ exports.signup = async (req, res) => {
     delete userData.user_pass;
     delete userData.user_validation;
 
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: generatedUserCode,
+      LOG_DETAIL: "success",
+      LOG_SOURCE: Buffer.from(JSON.stringify(req.params)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "create",
+    });
     return res.status(201).json({
       message: "Berhasil daftar.",
       data: userData,
     });
   } catch (error) {
     console.error("Signup Error:", error);
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: user.user_code,
+      LOG_DETAIL: "failed",
+      LOG_SOURCE: Buffer.from(JSON.stringify(req.params)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "create",
+    });
     if (error.name === "SequelizeValidationError") {
       return res.status(400).json({
         message: "Validation Error",
@@ -237,7 +258,7 @@ exports.signin = async (req, res) => {
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
-      return res.status(400).json({
+      res.status(400).json({
         message: "Nama pengguna/email dan password dibutuhkan.",
       });
     }
@@ -249,7 +270,7 @@ exports.signin = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         message: "Kredensial salah atau pengguna tidak ditemukan.",
       });
     }
@@ -257,19 +278,20 @@ exports.signin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.user_pass);
 
     if (!isMatch) {
-      return res.status(401).json({
+      res.status(401).json({
         message: "Kredensial salah atau pengguna tidak ditemukan.",
       });
     }
 
     if (user.user_status !== "A") {
-      return res.status(403).json({
+      res.status(403).json({
         message: "Akun pengguna tidak aktif.",
       });
     }
 
     const payload = {
       user_code: user.user_code,
+      user_name: user.user_name,
       level: user.user_level,
       pasar_code: user.user_owner,
     };
@@ -283,13 +305,31 @@ exports.signin = async (req, res) => {
     delete userData.user_pass;
     delete userData.user_validation;
 
+    const ipAddress = getClientIp(req);
+    const browser = getClientBrowser(req.headers["user-agent"]);
+
+    await addLogAkses({
+      AKSES_USER: user.user_code,
+      AKSES_IP: ipAddress,
+      AKSES_BROWSER: browser,
+      AKSES_STATUS: "Success",
+    });
+
     return res.status(200).json({
       message: "Berhasil login.",
       data: userData,
       token,
     });
   } catch (error) {
-    console.error("Signin Error:", error);
+    const ipAddress = getClientIp(req);
+    const browser = getClientBrowser(req.headers["user-agent"]);
+
+    await addLogAkses({
+      AKSES_USER: user.user_code,
+      AKSES_IP: ipAddress,
+      AKSES_BROWSER: browser,
+      AKSES_STATUS: "Failed",
+    });
     return res.status(500).json({
       message: "Internal server error during signin.",
     });
@@ -401,7 +441,7 @@ exports.editProfile = async (req, res) => {
           fs.unlinkSync(oldPhotoPath);
         }
       }
-      
+
       user.user_foto = req.file.filename;
     }
 
@@ -423,7 +463,7 @@ exports.changePassword = async (req, res) => {
   const userId = req.user.id;
 
   if (!req.user || !req.user.id) {
-    return res.status(401).json({ error: "Unauthorized: Sesi tidak valid." });
+    res.status(401).json({ error: "Unauthorized: Sesi tidak valid." });
   }
 
   try {
@@ -434,13 +474,13 @@ exports.changePassword = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      res.status(404).json({ message: "User not found" });
     }
 
     const { old_password, new_password } = req.body;
 
     if (!old_password || !new_password) {
-      return res.status(400).json({
+      res.status(400).json({
         message: "Old password and new password are required.",
       });
     }
@@ -448,7 +488,7 @@ exports.changePassword = async (req, res) => {
     const isMatch = await bcrypt.compare(old_password, user.user_pass);
 
     if (!isMatch) {
-      return res.status(401).json({
+      res.status(401).json({
         message: "Old password is incorrect.",
       });
     }
@@ -463,6 +503,47 @@ exports.changePassword = async (req, res) => {
     console.error("Change Password Error:", error);
     return res.status(500).json({
       message: "Internal server error during password change.",
+    });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  if (!req.user || req.user.level !== "SUA") {
+    return res.status(403).json({
+      message: "Access denied. Only Super Admin can reset passwords.",
+    });
+  }
+
+  const { user_code, new_password } = req.body;
+
+  if (!user_code || !new_password) {
+    return res.status(400).json({
+      message: "User code and new password are required.",
+    });
+  }
+
+  try {
+    const user = await userakses.findOne({
+      where: { user_code },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    user.user_pass = hashedPassword;
+    await user.save();
+
+    return res.status(200).json({
+      message: `Password for user ${user_code} has been reset successfully.`,
+    });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({
+      message: "Internal server error during password reset.",
     });
   }
 };

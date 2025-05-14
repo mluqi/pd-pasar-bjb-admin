@@ -21,7 +21,9 @@ const authMiddleware = async (req, res, next) => {
 
     req.user = {
       id: verified.user_code,
+      name: verified.user_name,
       level: verified.level,
+      owner: verified.pasar_code,
     };
 
     console.log(req.user);

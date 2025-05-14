@@ -1,9 +1,10 @@
 const { data_pasar } = require("../models");
 const { Op } = require("sequelize");
+const { addLogActivity } = require("./logController");
 
 exports.addPasar = async (req, res) => {
   if (!req.user || !req.user.id || !req.user.level) {
-    return res
+    res
       .status(401)
       .json({ message: "Otentikasi diperlukan untuk tindakan ini." });
   }
@@ -12,16 +13,14 @@ exports.addPasar = async (req, res) => {
   const userLevel = req.user.level;
 
   if (userLevel != "SUA") {
-    return res.status(403).json({ message: "Akses ditolak." });
+    res.status(403).json({ message: "Akses ditolak." });
   }
 
   try {
     const { pasar_nama, pasar_status } = req.body;
 
     if (!pasar_nama || !pasar_status) {
-      return res
-        .status(400)
-        .json({ message: "Nama dan status pasar diperlukan." });
+      res.status(400).json({ message: "Nama dan status pasar diperlukan." });
     }
 
     const existingPasar = await data_pasar.findOne({
@@ -35,7 +34,7 @@ exports.addPasar = async (req, res) => {
       if (existingPasar.pasar_nama === pasar_nama) {
         message = "Nama pasar sudah digunakan.";
       }
-      return res.status(400).json({ message });
+      res.status(400).json({ message });
     }
 
     const pasar_logo_filename = req.file ? req.file.filename : null;
@@ -53,7 +52,7 @@ exports.addPasar = async (req, res) => {
 
     if (lastPasar && lastPasar.pasar_code) {
       try {
-        const lastNum = parseInt(lastPasar.pasar_code.substring(3), 10); 
+        const lastNum = parseInt(lastPasar.pasar_code.substring(3), 10);
         if (!isNaN(lastNum)) {
           nextSequence = lastNum + 1;
         }
@@ -63,25 +62,57 @@ exports.addPasar = async (req, res) => {
           lastPasar.pasar_code,
           e
         );
-        return res
+        res
           .status(500)
           .json({ message: "Gagal memproses kode pasar terakhir." });
       }
     }
     const generatedPasarCode = `PSR${nextSequence.toString().padStart(4, "0")}`;
 
-    const newPasar = await data_pasar.create({
-      pasar_code: generatedPasarCode,
-      pasar_nama,
-      pasar_status,
-      pasar_logo: pasar_logo_filename,
-    });
+    const newPasar = await data_pasar.create(
+      {
+        pasar_code: generatedPasarCode,
+        pasar_nama,
+        pasar_status,
+        pasar_logo: pasar_logo_filename,
+      },
+      {
+        logging: (query) => {
+          req.sqlQuery = query;
+        },
+      }
+    );
 
-    res
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+      data: req.body,
+    };
+
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: generatedPasarCode,
+      LOG_DETAIL: "success",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "create",
+    });
+    return res
       .status(201)
       .json({ message: "Pasar berhasil ditambahkan.", data: newPasar });
   } catch (error) {
-    console.error("Error adding pasar:", error);
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+    };
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: null,
+      LOG_DETAIL: "failed",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "create",
+    });
     if (error.name === "SequelizeUniqueConstraintError") {
       return res
         .status(409)
@@ -94,31 +125,68 @@ exports.addPasar = async (req, res) => {
 };
 
 exports.getAllPasar = async (req, res) => {
-  if (!req.user || !req.user.id || !req.user.level) {
-    return res
-      .status(401)
-      .json({ message: "Otentikasi diperlukan untuk tindakan ini." });
-  }
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const search = req.query.search || "";
+  const status = req.query.status || "";
+  const offset = (page - 1) * limit;
 
+  try {
+    const whereClause = {
+      [Op.and]: [
+        search ? { pasar_nama: { [Op.like]: `%${search}%` } } : {}, // Search by name
+        status ? { pasar_status: status } : {}, // Filter by status
+      ],
+    };
+
+    const { count, rows } = await data_pasar.findAndCountAll({
+      where: whereClause,
+      limit,
+      offset,
+      order: [["pasar_nama", "ASC"]],
+    });
+
+    res.status(200).json({
+      data: rows,
+      total: count,
+      page,
+      totalPages: Math.ceil(count / limit),
+    });
+  } catch (error) {
+    console.error("Failed to fetch pasars:", error);
+    res.status(500).json({ message: "Failed to fetch pasars." });
+  }
+};
+
+exports.getAllPasarWithoutPagination = async (req, res) => {
   const userId = req.user.id;
   const userLevel = req.user.level;
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
 
   if (userLevel != "SUA") {
     return res.status(403).json({ message: "Akses ditolak." });
   }
 
   try {
-    const allPasar = await data_pasar.findAll();
-    res.json(allPasar);
+    const pasars = await data_pasar.findAll({
+      attributes: ["pasar_code", "pasar_nama"],
+      where: {
+        pasar_status: "A",
+      },
+      order: [["pasar_nama", "ASC"]],
+    });
+    res.status(200).json(pasars);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Terjadi kesalahan server." });
+    console.error("Failed to fetch all pasars:", error);
+    res.status(500).json({ message: "Failed to fetch all pasars." });
   }
 };
 
 exports.editPasar = async (req, res) => {
   if (!req.user || !req.user.id || !req.user.level) {
-    return res
+    res
       .status(401)
       .json({ message: "Otentikasi diperlukan untuk tindakan ini." });
   }
@@ -127,7 +195,7 @@ exports.editPasar = async (req, res) => {
   const userLevel = req.user.level;
 
   if (userLevel != "SUA") {
-    return res.status(403).json({ message: "Akses ditolak." });
+    res.status(403).json({ message: "Akses ditolak." });
   }
 
   try {
@@ -135,37 +203,67 @@ exports.editPasar = async (req, res) => {
     const { pasar_nama, pasar_status } = req.body;
 
     if (!pasar_nama || !pasar_status) {
-      return res
-        .status(400)
-        .json({ message: "Nama dan status pasar diperlukan." });
+      res.status(400).json({ message: "Nama dan status pasar diperlukan." });
     }
 
     const pasar = await data_pasar.findOne({ where: { pasar_code } });
 
     if (!pasar) {
-      return res.status(404).json({ message: "Pasar tidak ditemukan." });
+      res.status(404).json({ message: "Pasar tidak ditemukan." });
     }
 
     const fotoPasar = req.file ? req.file.filename : null;
 
-    const data = await pasar.update({
-      pasar_nama,
-      pasar_status,
-      pasar_logo: fotoPasar || pasar.pasar_logo,
+    const data = await pasar.update(
+      {
+        pasar_nama,
+        pasar_status,
+        pasar_logo: fotoPasar || pasar.pasar_logo,
+      },
+      {
+        logging: (query) => {
+          req.sqlQuery = query;
+        },
+      }
+    );
+
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+    };
+
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: req.params.code,
+      LOG_DETAIL: "success",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "update",
     });
 
     return res
       .status(201)
       .json({ message: "Pasar berhasil diperbarui.", data: data });
   } catch (error) {
-    console.error("Error editing pasar:", error);
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+    };
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: req.params.code,
+      LOG_DETAIL: "failed",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "update",
+    });
     return res.status(500).json({ message: error.message });
   }
 };
 
 exports.deletePasar = async (req, res) => {
   if (!req.user || !req.user.id || !req.user.level) {
-    return res
+    res
       .status(401)
       .json({ message: "Otentikasi diperlukan untuk tindakan ini." });
   }
@@ -174,7 +272,7 @@ exports.deletePasar = async (req, res) => {
   const userLevel = req.user.level;
 
   if (userLevel != "SUA") {
-    return res.status(403).json({ message: "Akses ditolak." });
+    res.status(403).json({ message: "Akses ditolak." });
   }
 
   try {
@@ -183,13 +281,42 @@ exports.deletePasar = async (req, res) => {
     const pasar = await data_pasar.findOne({ where: { pasar_code } });
 
     if (!pasar) {
-      return res.status(404).json({ message: "Pasar tidak ditemukan." });
+      res.status(404).json({ message: "Pasar tidak ditemukan." });
     }
 
-    await pasar.destroy();
+    await pasar.destroy({
+      logging: (query) => {
+        req.sqlQuery = query;
+      },
+    });
 
-    return res.json({ message: "Pasar berhasil dihapus." });
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+    };
+
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: pasar_code,
+      LOG_DETAIL: "success",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "delete",
+    });
+    return res.status(200).json({ message: "Pasar berhasil dihapus." });
   } catch {
+    const logSource = {
+      user: req.user,
+      query: req.sqlQuery,
+    };
+    await addLogActivity({
+      LOG_USER: req.user.id,
+      LOG_TARGET: pasar_code,
+      LOG_DETAIL: "failed",
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_OWNER: req.user.owner,
+      LOG_ACTION: "delete",
+    });
     return res.status(500).json({
       message: error.message,
     });

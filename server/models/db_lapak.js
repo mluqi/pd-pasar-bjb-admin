@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: "LAPAK_TYPE",
         targetKey: "TYPE_CODE",
       });
-
-      // DB_LAPAK.hasMany(models.DB_IURAN, {
-      //   foreignKey: "LAPAK_CODE",
-      //   sourceKey: "LAPAK_CODE",
-      // });
+      DB_LAPAK.belongsTo(models.data_pasar, {
+        foreignKey: "LAPAK_OWNER",
+        targetKey: "pasar_code",
+        as: "pasar",
+      });
     }
   }
   DB_LAPAK.init(

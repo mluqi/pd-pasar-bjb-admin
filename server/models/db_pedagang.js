@@ -13,11 +13,17 @@ module.exports = (sequelize, DataTypes) => {
       DB_PEDAGANG.hasMany(models.DB_LAPAK, {
         foreignKey: "LAPAK_PENYEWA",
         sourceKey: "CUST_CODE",
+        as: "lapaks",
       });
 
       DB_PEDAGANG.hasMany(models.DB_IURAN, {
         foreignKey: "IURAN_PEDAGANG",
         sourceKey: "CUST_CODE",
+      });
+      DB_PEDAGANG.belongsTo(models.data_pasar, {
+        foreignKey: "CUST_OWNER",
+        targetKey: "pasar_code",
+        as: "pasar",
       });
     }
   }
@@ -30,6 +36,8 @@ module.exports = (sequelize, DataTypes) => {
     CUST_NIK: DataTypes.STRING(50),
     CUST_PHONE: DataTypes.STRING(50),
     CUST_OWNER: DataTypes.STRING(50),
+    CUST_IURAN: DataTypes.STRING(50),
+    CUST_STATUS: DataTypes.ENUM("aktif", "nonaktif"),
   }, {
     sequelize,
     modelName: 'DB_PEDAGANG',

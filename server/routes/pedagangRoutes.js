@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const {
   getAllPedagang,
+  getAllPedagangWithoutPagination,
   getPedagangById,
   createPedagang,
   updatePedagang,
@@ -10,6 +11,7 @@ const {
 } = require("../controllers/pedagangController");
 
 router.get("/", authMiddleware, getAllPedagang);
+router.get("/all", authMiddleware, getAllPedagangWithoutPagination);
 router.get("/:code", authMiddleware, getPedagangById);
 router.post("/", authMiddleware, createPedagang);
 router.put("/:code", authMiddleware, updatePedagang);
