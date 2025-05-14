@@ -32,7 +32,7 @@ export default function SignInForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.identifier || !form.password) {
-      alert("Email dan password harus diisi!");
+      alert("Enter your username and password to sign in!");
       return;
     }
 
@@ -46,7 +46,7 @@ export default function SignInForm() {
         localStorage.removeItem("rememberMe");
       }
 
-      navigate("/dashboard");
+      navigate("/");
     } catch (error) {
       console.error(error);
       if (
@@ -79,7 +79,7 @@ export default function SignInForm() {
               Sign In
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email and password to sign in!
+              Enter your username and password to sign in!
             </p>
           </div>
           <div>
@@ -93,7 +93,7 @@ export default function SignInForm() {
                     id="identifier"
                     name="identifier"
                     type="text"
-                    placeholder="username or email"
+                    placeholder="Username"
                     onChange={handleChange}
                     value={form.identifier}
                   />
@@ -130,12 +130,12 @@ export default function SignInForm() {
                       Keep me logged in
                     </span>
                   </div>
-                  <Link
+                  {/* <Link
                     to="/reset-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Forgot password?
-                  </Link>
+                  </Link> */}
                 </div>
                 <div>
                   <Button className="w-full" size="sm">
@@ -148,7 +148,7 @@ export default function SignInForm() {
             {errorMessage && (
               <div className="text-red-500 text-sm mt-2">{errorMessage}</div>
             )}
-            <div className="mt-5">
+            {/* <div className="mt-5">
               <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
                 Don&apos;t have an account? {""}
                 <Link
@@ -158,7 +158,7 @@ export default function SignInForm() {
                   Sign Up
                 </Link>
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

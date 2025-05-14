@@ -5,6 +5,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import PedagangModal from "./PedagangModal";
 import Button from "../../components/ui/button/Button";
@@ -227,7 +228,12 @@ export default function PedagangTable() {
             {pedagangs.map((pedagang) => (
               <TableRow key={pedagang.CUST_CODE}>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {pedagang.CUST_CODE}
+                  <Link
+                    to={`/pedagang-management/detail/${pedagang.CUST_CODE}`}
+                    className="text-blue-500 hover:underline"
+                  >
+                    {pedagang.CUST_CODE}
+                  </Link>
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {pedagang.CUST_NAMA}

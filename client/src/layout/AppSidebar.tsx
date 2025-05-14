@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useContext } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -338,7 +338,6 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     const fetchAndSetMenus = async () => {
       if (user && user.user_level) {
-        // Pastikan user dan role (level akses) tersedia
         setIsLoading(true);
         setError(null);
         try {

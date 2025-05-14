@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
       DB_PEDAGANG.hasMany(models.DB_IURAN, {
         foreignKey: "IURAN_PEDAGANG",
         sourceKey: "CUST_CODE",
+        as: "iurans",
       });
       DB_PEDAGANG.belongsTo(models.data_pasar, {
         foreignKey: "CUST_OWNER",

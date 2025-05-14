@@ -1,4 +1,4 @@
-const { DB_PEDAGANG, DB_LAPAK, data_pasar } = require("../models");
+const { DB_PEDAGANG, DB_LAPAK, data_pasar, DB_IURAN } = require("../models");
 const { Sequelize } = require("sequelize");
 const { addLogActivity } = require("./logController");
 const Joi = require("joi");
@@ -118,6 +118,11 @@ exports.getPedagangById = async (req, res) => {
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
+
+  const iuranPage = parseInt(req.query.iuranPage) || 1;
+  const iuranLimit = parseInt(req.query.iuranLimit) || 10;
+  const iuranOffset = (iuranPage - 1) * iuranLimit;
+
   try {
     const pedagang = await DB_PEDAGANG.findOne({
       where: { CUST_CODE: req.params.code },
@@ -130,9 +135,27 @@ exports.getPedagangById = async (req, res) => {
         },
       ],
     });
+
     if (!pedagang)
       return res.status(404).json({ message: "Pedagang not found" });
-    res.json(pedagang);
+
+    const iuranData = await DB_IURAN.findAndCountAll({
+      where: { IURAN_PEDAGANG: req.params.code },
+      limit: iuranLimit,
+      offset: iuranOffset,
+      order: [["IURAN_TANGGAL", "DESC"]]
+    });
+
+    res.json({
+      pedagang: pedagang,
+      iurans: {
+        data: iuranData.rows,
+        total: iuranData.count,
+        page: iuranPage,
+        totalPages: Math.ceil(iuranData.count / iuranLimit),
+      },
+    });
+    
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -257,7 +280,7 @@ exports.updatePedagang = async (req, res) => {
         req.sqlQuery = query;
       },
     });
-    
+
     if (!updated) {
       res.status(404).json({ message: "Pedagang not found" });
     }

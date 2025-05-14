@@ -72,7 +72,7 @@ export const LogProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       
       const res = await api.get(`/log-activity?${params.toString()}`);
-      console.log("API Response in Context:", res.data);
+      // console.log("API Response in Context:", res.data);
       setLogActivity(res.data.data);
       return { totalPages: res.data.totalPages };
     } catch (error) {

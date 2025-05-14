@@ -59,6 +59,7 @@ const UserModal: React.FC<UserModalProps> = ({
   const { pasars, fetchAllPasars } = useDropdownContext();
 
   const [levelList, setLevelList] = useState<Level[]>([]);
+  const [pasarList, setPasarList] = useState<Pasar[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -75,6 +76,10 @@ const UserModal: React.FC<UserModalProps> = ({
   useEffect(() => {
     setLevelList(levels);
   }, [levels]);
+
+  useEffect(() => {
+    setPasarList(pasars);
+  }, [pasars]);
 
   useEffect(() => {
     if (user) {
@@ -158,12 +163,16 @@ const UserModal: React.FC<UserModalProps> = ({
       (level) => level.level_code === form.user_level
     );
 
+    const selectedPasar = pasarList.find(
+      (pasar) => pasar.pasar_code === form.pasar_code
+    );
+
     if (selectedLevel) {
       formData.append("user_level_name", selectedLevel.level_name);
     }
 
-    if (form.pasar_code) {
-      formData.append("pasar_code", form.pasar_code);
+    if (selectedPasar) {
+      formData.append("pasar_code", selectedPasar.pasar_code);
     }
 
     if (form.user_foto instanceof File) {

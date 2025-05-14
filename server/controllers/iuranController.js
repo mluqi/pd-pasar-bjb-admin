@@ -1,5 +1,5 @@
-const { DB_IURAN, DB_PEDAGANG } = require("../models");
-const { Op, Sequelize } = require("sequelize");
+const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models");
+const { Op, Sequelize, where } = require("sequelize");
 const { addLogActivity } = require("./logController");
 
 exports.getAllIuran = async (req, res) => {
@@ -35,18 +35,29 @@ exports.getAllIuran = async (req, res) => {
       ],
     };
 
+    const includeClause = [
+      {
+        model: DB_PEDAGANG,
+        as: "DB_PEDAGANG",
+        attributes: ["CUST_CODE", "CUST_NAMA", "CUST_OWNER"],
+        where: userLevel !== "SUA" ? { CUST_OWNER: userPasar } : undefined,
+        required: true,
+        include: [
+          {
+            model: DB_LAPAK,
+            as: "lapaks",
+            attributes: ["LAPAK_CODE", "LAPAK_NAMA", "LAPAK_BLOK"],
+          },
+        ],
+      },
+    ];
+
     const { count, rows } = await DB_IURAN.findAndCountAll({
       where: whereClause,
       limit,
       offset,
       order: [["IURAN_TANGGAL", "DESC"]],
-      include: [
-        {
-          model: DB_PEDAGANG,
-          as: "DB_PEDAGANG",
-          attributes: ["CUST_CODE", "CUST_NAMA", "CUST_OWNER"],
-        },
-      ],
+      include: includeClause
     });
 
     res.status(200).json({
@@ -695,7 +706,6 @@ exports.getIuranStatusCounts = async (req, res) => {
       conditions.push({ IURAN_TANGGAL: { [Op.gte]: startDate } });
     }
     if (endDate) {
-
       const endOfDay = new Date(endDate);
       endOfDay.setHours(23, 59, 59, 999);
       conditions.push({ IURAN_TANGGAL: { [Op.lte]: endOfDay } });
@@ -705,7 +715,14 @@ exports.getIuranStatusCounts = async (req, res) => {
 
     const includeClause =
       userLevel !== "SUA"
-        ? [{ model: DB_PEDAGANG, as: "DB_PEDAGANG", attributes: [], required: true }]
+        ? [
+            {
+              model: DB_PEDAGANG,
+              as: "DB_PEDAGANG",
+              attributes: [],
+              required: true,
+            },
+          ]
         : [];
 
     const statusCounts = await DB_IURAN.findAll({

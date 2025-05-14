@@ -74,14 +74,7 @@ export default function IuranTable() {
 
   useEffect(() => {
     fetchIuransData();
-  }, [
-    page,
-    limit,
-    search,
-    statusFilter,
-    metodeBayarFilter,
-    dateRange,
-  ]);
+  }, [page, limit, search, statusFilter, metodeBayarFilter, dateRange]);
 
   const openEditModal = (iuran) => {
     setSelectedIuran(iuran);
@@ -98,6 +91,7 @@ export default function IuranTable() {
     setIsAddModalOpen(false);
     setSelectedIuran(null);
   };
+  
 
   const handleSaveIuran = async (formData) => {
     try {
@@ -206,8 +200,24 @@ export default function IuranTable() {
                   {iuran.IURAN_CODE}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {iuran.DB_PEDAGANG?.CUST_NAMA || "Unknown"}
+                  <div className="relative group">
+                    <span className="cursor-pointer">
+                      {iuran.DB_PEDAGANG?.CUST_NAMA || "Unknown"}
+                    </span>
+
+                    {/* Tooltip */}
+                    <div className="absolute left-0 z-10 hidden w-52 whitespace-pre-line rounded bg-gray-800 px-3 py-2 text-sm text-white shadow-md group-hover:block">
+                      {iuran.DB_PEDAGANG?.lapaks?.[0]
+                        ? `Lapak: ${
+                            iuran.DB_PEDAGANG.lapaks[0].LAPAK_NAMA || "N/A"
+                          }\nBlok: ${
+                            iuran.DB_PEDAGANG.lapaks[0].LAPAK_BLOK || "N/A"
+                          }`
+                        : "Info lapak tidak tersedia"}
+                    </div>
+                  </div>
                 </TableCell>
+
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {new Date(iuran.IURAN_TANGGAL).toLocaleDateString("id-ID", {
                     year: "numeric",
