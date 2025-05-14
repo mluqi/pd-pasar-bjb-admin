@@ -8,17 +8,68 @@ import {
 import { useEffect, useState } from "react";
 import LapakModal from "./LapakModal";
 import Badge from "../../components/ui/badge/Badge";
+import Button from "../../components/ui/button/Button";
+import Select from "../../components/form/Select";
+import Input from "../../components/form/input/InputField";
+
 import { useLapakContext } from "../../context/LapakContext";
+import { useDropdownContext } from "../../context/DropdownContext";
+
+const limitOptions = [
+  { value: "10", label: "10 per page" },
+  { value: "20", label: "20 per page" },
+  { value: "50", label: "50 per page" },
+  { value: "100", label: "100 per page" },
+];
+
+const statusOptions = [
+  { value: "", label: "All Status" },
+  { value: "aktif", label: "Paid" },
+  { value: "kosong", label: "Pending" },
+  { value: "rusak", label: "Rusak" },
+];
 
 export default function LapakTable() {
-  const { lapaks, fetchLapaks, addLapak, editLapak, deleteLapak } = useLapakContext();
+  const { lapaks, fetchLapaks, addLapak, editLapak, deleteLapak } =
+    useLapakContext();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLapak, setSelectedLapak] = useState(null);
+  const [search, setSearch] = useState(""); // State untuk search input
+  const [statusFilter, setStatusFilter] = useState(""); // State untuk filter status
+  const [pasar, setPasar] = useState(""); // State untuk filter pasar
+  const [owner, setOwner] = useState("");
+  const [page, setPage] = useState(1); // State untuk pagination
+  const [limit, setLimit] = useState(10); // State untuk jumlah data per halaman
+  const [totalPages, setTotalPages] = useState(1); // Total halaman dari API
+
+  const fetchLapaksData = async () => {
+    try {
+      const response = await fetchLapaks(
+        page,
+        limit,
+        search,
+        statusFilter,
+        pasar,
+        owner
+      );
+      setTotalPages(response.totalPages); // Update total pages
+    } catch (error) {
+      console.error("Failed to fetch lapaks:", error);
+    }
+  };
+
+  const { pasars, pedagangs, fetchAllPasars, fetchAllPedagangs } =
+    useDropdownContext();
 
   useEffect(() => {
-    fetchLapaks();
+    fetchAllPasars();
+    fetchAllPedagangs();
   }, []);
+
+  useEffect(() => {
+    fetchLapaksData();
+  }, [page, limit, search, statusFilter, pasar, owner]);
 
   const openEditModal = (lapak) => {
     setSelectedLapak(lapak);
@@ -50,7 +101,9 @@ export default function LapakTable() {
   };
 
   const handleDeleteLapak = async (LAPAK_CODE) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this lapak?");
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this lapak?"
+    );
     if (!confirmDelete) return;
     try {
       await deleteLapak(LAPAK_CODE);
@@ -61,29 +114,86 @@ export default function LapakTable() {
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <div className="flex justify-end p-4">
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+      <div className="flex flex-wrap gap-4 p-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-grow">
+          <Select
+            options={limitOptions}
+            onChange={(value) => {
+              setLimit(Number(value));
+              setPage(1);
+            }}
+            defaultValue={limit.toString()}
+            className="w-full sm:w-auto"
+          />
+          <Input
+            type="text"
+            placeholder="Search by name or code"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Select
+            options={statusOptions}
+            onChange={(value) => setStatusFilter(value)}
+            placeholder="All Status"
+            defaultValue={statusFilter}
+            className="w-full sm:w-auto"
+          />
+          <Select
+            options={[
+              { value: "", label: "All Pedagang" },
+              ...(pedagangs || []).map((pedagang) => ({
+                value: pedagang.CUST_CODE,
+                label: pedagang.CUST_NAMA,
+              })),
+            ]}
+            placeholder="All Pedagang"
+            onChange={(value) => setOwner(value)}
+            defaultValue={owner}
+            className="w-full sm:w-auto"
+          />
+          <Select
+            options={[
+              { value: "", label: "All Pasars" },
+              ...(pasars || []).map((pasar) => ({
+                value: pasar.pasar_code,
+                label: pasar.pasar_nama,
+              })),
+            ]}
+            placeholder="All Pasars"
+            onChange={(value) => setPasar(value)}
+            defaultValue={owner}
+            className="w-full sm:w-auto"
+          />
+        </div>
+        <Button onClick={openAddModal} className="w-full sm:w-auto">
           Add Lapak
-        </button>
+        </Button>
       </div>
       <div className="max-w-full overflow-x-auto">
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
-              {["Code", "Name", "Blok", "Ukuran", "Type", "Tgl Mulai", "Tgl Akhir", "Pasar", "Status", "Penyewa", "Actions"].map(
-                (title) => (
-                  <TableCell
-                    key={title}
-                    isHeader
-                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                  >
-                    {title}
-                  </TableCell>
-                )
-              )}
+              {[
+                "Code",
+                "Name",
+                "Blok",
+                "Ukuran",
+                "Type",
+                "Penyewa",
+                "Tgl Mulai",
+                "Tgl Akhir",
+                "Pasar",
+                "Status",
+                "Actions",
+              ].map((title) => (
+                <TableCell
+                  key={title}
+                  isHeader
+                  className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                >
+                  {title}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHeader>
 
@@ -103,7 +213,10 @@ export default function LapakTable() {
                   {lapak.LAPAK_UKURAN}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {lapak.LAPAK_TYPE}
+                  {lapak.DB_TYPE_LAPAK?.TYPE_NAMA}
+                </TableCell>
+                <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
+                  {lapak.DB_PEDAGANG?.CUST_NAMA || ""}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {lapak.LAPAK_MULAI
@@ -111,23 +224,26 @@ export default function LapakTable() {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
+                        // hour: "2-digit",
+                        // minute: "2-digit",
+                        // second: "2-digit",
                       })
                     : ""}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                {lapak.LAPAK_AKHIR
+                  {lapak.LAPAK_AKHIR
                     ? new Date(lapak.LAPAK_AKHIR).toLocaleDateString("id-ID", {
                         year: "numeric",
                         month: "2-digit",
                         day: "2-digit",
+                        // hour: "2-digit",
+                        // minute: "2-digit",
+                        // second: "2-digit",
                       })
                     : ""}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {lapak.LAPAK_OWNER}
+                  {lapak.pasar?.pasar_nama || "Unknown"}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <Badge
@@ -142,9 +258,6 @@ export default function LapakTable() {
                   >
                     {lapak.LAPAK_STATUS}
                   </Badge>
-                </TableCell>
-                <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {lapak.LAPAK_PENYEWA || ""}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <button
@@ -164,6 +277,21 @@ export default function LapakTable() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex justify-between items-center p-4">
+        <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          Previous
+        </Button>
+        <span className="text-gray-700 dark:text-gray-400">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </Button>
       </div>
 
       <LapakModal

@@ -5,11 +5,26 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
+import Badge from "../../components/ui/badge/Badge";
+import Input from "../../components/form/input/InputField";
+import Button from "../../components/ui/button/Button";
+import Select from "../../components/form/Select";
 
 import { usePasarContext } from "../../context/PasarContext";
+import { useEffect, useState } from "react";
 
-import Badge from "../../components/ui/badge/Badge";
-import { use, useEffect, useState } from "react";
+const statusOptions = [
+  { value: "", label: "All Status" },
+  { value: "A", label: "Active" },
+  { value: "N", label: "Nonactive" },
+];
+
+const limitOptions = [
+  { value: "10", label: "10 per page" },
+  { value: "20", label: "20 per page" },
+  { value: "50", label: "50 per page" },
+  { value: "100", label: "100 per page" },
+];
 
 interface Pasar {
   pasar_code: string;
@@ -21,22 +36,31 @@ interface Pasar {
 import PasarModal from "./PasarModal";
 
 export default function PasarTable() {
-  const { pasars, fetchPasars, addPasar, editPasar, deletePasar } = usePasarContext();
+  const { pasars, fetchPasars, addPasar, editPasar, deletePasar } =
+    usePasarContext();
   // const [pasars, setPasars] = useState<Pasar[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedPasar, setSelectedPasar] = useState<Pasar | null>(null);
-  const [pasarList, setPasarList] = useState<Pasar[]>([]);
+  const [search, setSearch] = useState(""); // State for search input
+  const [statusFilter, setStatusFilter] = useState(""); // State for status filter
+  const [page, setPage] = useState(1); // State for pagination
+  const [limit, setLimit] = useState(10); // State for limit
+  const [totalPages, setTotalPages] = useState(1); // Total pages from API
 
-  useEffect(() => {
-    if (!pasars.length) {
-    fetchPasars();
+  const fetchPasarsData = async () => {
+    try {
+      const response = await fetchPasars(page, limit, search, statusFilter);
+      setTotalPages(response.totalPages); // Update total pages
+    } catch (error) {
+      console.error("Failed to fetch pasars:", error);
     }
-  }, [pasars, fetchPasars]);
-  
+  };
+
+  // Panggil fetchPasarsData setiap kali page, limit, search, atau statusFilter berubah
   useEffect(() => {
-    setPasarList(pasars);
-  }, [pasars]);
+    fetchPasarsData();
+  }, [page, limit, search, statusFilter]);
 
   const openEditModal = (pasar: Pasar) => {
     setSelectedPasar(pasar);
@@ -64,20 +88,44 @@ export default function PasarTable() {
   };
 
   const handleDeletePasar = async (pasar_code: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this pasar?");
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this pasar?"
+    );
     if (!confirmDelete) return;
     await deletePasar(pasar_code);
   };
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <div className="flex justify-end p-4">
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+      <div className="flex flex-wrap gap-4 p-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-grow">
+          <Select
+            options={limitOptions}
+            onChange={(value) => {
+              setLimit(Number(value));
+              setPage(1);
+            }}
+            defaultValue={limit.toString()}
+            className="w-full sm:w-auto"
+          />
+          <Input
+            type="text"
+            placeholder="Search by name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 border rounded w-full sm:w-auto"
+          />
+          <Select
+            options={statusOptions}
+            onChange={(value) => setStatusFilter(value)}
+            defaultValue=""
+            placeholder="All Status"
+            className="w-full sm:w-auto"
+          />
+        </div>
+        <Button onClick={openAddModal} className="w-full sm:w-auto">
           Add Pasar
-        </button>
+        </Button>
       </div>
       <div className="max-w-full overflow-x-auto">
         <Table>
@@ -107,7 +155,7 @@ export default function PasarTable() {
                 <TableCell className="px-5 py-3">
                   <div className="w-10 h-10 overflow-hidden rounded-full border-2 border-white dark:border-gray-800">
                     <img
-                      src={pasar.pasar_logo || "/images/placeholder-logo.png"}
+                      src={pasar.pasar_logo || "/images/logo/no-logo.png"}
                       alt={pasar.pasar_nama}
                       className="w-full h-full object-cover"
                     />
@@ -119,12 +167,10 @@ export default function PasarTable() {
                     color={
                       pasar.pasar_status === "A"
                         ? "success"
-                        : pasar.pasar_status === "P"
-                        ? "warning"
                         : "error"
                     }
                   >
-                    {pasar.pasar_status}
+                    {pasar.pasar_status === "A" ? "Active" : "Nonactive"}
                   </Badge>
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
@@ -145,6 +191,20 @@ export default function PasarTable() {
             ))}
           </TableBody>
         </Table>
+      </div>
+      <div className="flex justify-between items-center p-4">
+        <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          Previous
+        </Button>
+        <span className="text-gray-700 dark:text-gray-400">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </Button>
       </div>
 
       <PasarModal

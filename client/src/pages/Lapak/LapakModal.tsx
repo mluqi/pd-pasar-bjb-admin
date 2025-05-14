@@ -3,10 +3,10 @@ import { Modal } from "../../components/ui/modal";
 import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Button from "../../components/ui/button/Button";
-import DatePicker from "../../components/form/date-picker";
 import Select from "../../components/form/Select";
-import { usePedagangContext } from "../../context/PedagangContext";
-import { usePasarContext } from "../../context/PasarContext";
+import DatePicker from "../../components/form/date-picker";
+import { useDropdownContext } from "../../context/DropdownContext";
+import { useLapakTypeContext } from "../../context/LapakTypeContext";
 
 interface Lapak {
   LAPAK_CODE?: string;
@@ -14,22 +14,18 @@ interface Lapak {
   LAPAK_BLOK: string;
   LAPAK_UKURAN: string;
   LAPAK_TYPE: string;
-    LAPAK_PENYEWA?: string | null;
-    LAPAK_MULAI?: string | null;
-    LAPAK_AKHIR?: string | null;
-    LAPAK_STATUS: string | "aktif" | "kosong" | "rusak";
-    LAPAK_OWNER?: string;
+  LAPAK_PENYEWA?: string | null;
+  LAPAK_MULAI?: string | null;
+  LAPAK_AKHIR?: string | null;
+  LAPAK_STATUS: string | "aktif" | "kosong" | "rusak";
+  LAPAK_OWNER?: string;
 }
 
-interface Pedagang {
-    CUST_CODE: string;
-    CUST_NAMA: string;
-}
-
-interface Pasar {
-  pasar_code: string;
-  pasar_nama: string;
-}
+const statusOptions = [
+  { value: "aktif", label: "Aktif" },
+  { value: "kosong", label: "Kosong" },
+  { value: "rusak", label: "Rusak" },
+];
 
 interface LapakModalProps {
   isOpen: boolean;
@@ -66,8 +62,7 @@ const LapakModal: React.FC<LapakModalProps> = ({
         LAPAK_PENYEWA: lapak.LAPAK_PENYEWA || "",
         LAPAK_MULAI: lapak.LAPAK_MULAI || null,
         LAPAK_AKHIR: lapak.LAPAK_AKHIR || null,
-        LAPAK_STATUS: lapak.LAPAK_STATUS || "kosong",
-        LAPAK_OWNER: lapak.LAPAK_OWNER || "",
+        LAPAK_STATUS: lapak.LAPAK_STATUS || "",
       });
     } else {
       setForm({
@@ -84,33 +79,38 @@ const LapakModal: React.FC<LapakModalProps> = ({
     }
   }, [lapak]);
 
-  const { fetchPasars, pasars, } = usePasarContext();
-  const [ pasarList, setPasarList] = useState<Pasar[]>([]);
+  const { pasars, pedagangs, fetchAllPasars, fetchAllPedagangs } =
+    useDropdownContext();
 
   useEffect(() => {
-    fetchPasars();
+    fetchAllPasars();
+    fetchAllPedagangs();
   }, []);
-  
+
+  const { typeLapaks, fetchTypeLapaks } = useLapakTypeContext();
+
   useEffect(() => {
-    console.log("Pasars:", pasars); 
-    setPasarList(pasars);
-  }, [pasars]);
-  
+    fetchTypeLapaks();
+  }, []);
+
   const handleSelectChangeOwner = (value: string) => {
     setForm((prev) => ({ ...prev, LAPAK_OWNER: value }));
     console.log("Selected value:", value);
-  }
+  };
 
   const handleSelectChangeStatus = (value: string) => {
     setForm((prev) => ({ ...prev, LAPAK_STATUS: value }));
     console.log("Selected value:", value);
   };
+
   const handleSelectChangePenyewa = (value: string) => {
     setForm((prev) => ({ ...prev, LAPAK_PENYEWA: value }));
     console.log("Selected value:", value);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -119,28 +119,18 @@ const LapakModal: React.FC<LapakModalProps> = ({
     e.preventDefault();
     console.log("Form data:", form);
     if (
-        !form.LAPAK_NAMA ||
-        !form.LAPAK_BLOK ||
-        !form.LAPAK_UKURAN ||
-        !form.LAPAK_TYPE ||
-        !form.LAPAK_STATUS
-      ) {
-        alert("Please fill in all required fields.");
-        return;
-      }
+      !form.LAPAK_NAMA ||
+      !form.LAPAK_BLOK ||
+      !form.LAPAK_UKURAN ||
+      !form.LAPAK_TYPE ||
+      !form.LAPAK_STATUS
+    ) {
+      alert("Please fill in all required fields.");
+      return;
+    }
 
     onSave(form);
   };
-    const { pedagangs, fetchPedagangs } = usePedagangContext();
-    const [pedagangList, setPedagangList] = useState<Pedagang[]>([]);
-    useEffect(() => {
-        if (!pedagangs.length) {
-          fetchPedagangs(); 
-        }
-      }, [pedagangs, fetchPedagangs]);
-    useEffect(() => {
-        setPedagangList(pedagangs);
-      }, [pedagangs]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} className="max-w-[500px] m-4">
@@ -181,77 +171,109 @@ const LapakModal: React.FC<LapakModalProps> = ({
           </div>
           <div>
             <Label>Type</Label>
-            <Input
-              type="text"
-              name="LAPAK_TYPE"
+            <Select
+              options={[
+                { value: "", label: "All Type" },
+                ...(typeLapaks || []).map((TypeLapak) => ({
+                  name: "LAPAK_TYPE",
+                  value: TypeLapak.TYPE_CODE,
+                  label: TypeLapak.TYPE_NAMA,
+                })),
+              ]}
+              onChange={(value) => {
+                setForm((prev) => ({ ...prev, LAPAK_TYPE: value }));
+              }}
+              defaultValue=""
               value={form.LAPAK_TYPE}
-              onChange={handleChange}
-              placeholder="Enter type"
+              placeholder="Select Type"
             />
           </div>
-            <div>
+          {lapak && (
+            <>
+              <div>
                 <Label>Penyewa</Label>
                 <Select
-                options={(pedagangList || []).map((pedagang) => ({
+                  options={(pedagangs || []).map((pedagang) => ({
                     value: pedagang.CUST_CODE,
                     label: pedagang.CUST_NAMA,
-                }))}
-                placeholder="Select Penyewa"
-                onChange={handleSelectChangePenyewa}
-                className="dark:bg-dark-900"
+                  }))}
+                  placeholder="Select penyewa"
+                  value={form.LAPAK_PENYEWA || ""}
+                  onChange={(value) =>
+                    setForm((prev) => ({ ...prev, LAPAK_PENYEWA: value }))
+                  }
+                  className="dark:bg-dark-900"
                 />
+              </div>
+              <div>
+                <Label>Lapak Mulai</Label>
+                <DatePicker
+                  id="lapak-mulai"
+                  placeholder="Select start date"
+                  defaultDate={
+                    form.LAPAK_MULAI ? new Date(form.LAPAK_MULAI) : undefined
+                  }
+                  onChange={(selectedDates) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      LAPAK_MULAI:
+                        selectedDates[0]?.toISOString().split("T")[0] || null,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <Label>Lapak Akhir</Label>
+                <DatePicker
+                  id="lapak-akhir"
+                  placeholder="Select end date"
+                  defaultDate={
+                    form.LAPAK_AKHIR ? new Date(form.LAPAK_AKHIR) : undefined
+                  }
+                  onChange={(selectedDates) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      LAPAK_AKHIR:
+                        selectedDates[0]?.toISOString().split("T")[0] || null,
+                    }))
+                  }
+                />
+              </div>
+            </>
+          )}
+          {pasars.length > 0 && (
+            <div>
+              <Label>Pasar</Label>
+              <Select
+                options={[
+                  { value: "", label: "All Pasars" },
+                  ...(pasars || []).map((pasar) => ({
+                    value: pasar.pasar_code,
+                    label: pasar.pasar_nama,
+                  })),
+                ]}
+                placeholder="Select Pasar"
+                value={form.LAPAK_OWNER}
+                onChange={handleSelectChangeOwner}
+                className="dark:bg-dark-900"
+              />
             </div>
-        <div>
-          <DatePicker
-            id="start-date"
-            label="Mulai"
-            placeholder="Select a date"
-            onChange={(dates, currentDateString) => {
-              const startDate = new Date(dates[0]);
-              const formattedDate = startDate.toISOString().split("T")[0];
-              setForm((prev) => ({ ...prev, LAPAK_MULAI: formattedDate }));
-              console.log({ dates, currentDateString });
-            }}
-          />
-        </div>
-        <div>
-          <DatePicker
-            id="end-date"
-            label="Akhir"
-            placeholder="Select a date"
-            onChange={(dates, currentDateString) => {
-                const startDate = new Date(dates[0]);
-                const formattedDate = startDate.toISOString().split("T")[0];
-                setForm((prev) => ({ ...prev, LAPAK_AKHIR: formattedDate }));
-              console.log({ dates, currentDateString });
-            }}
-          />
-        </div>
-        <div>
-          <Label>Pasar</Label>
-          <Select
-            options={(pasarList || []).map((pasar) => ({
-              value: pasar.pasar_code,
-              label: pasar.pasar_nama,
-            }))}
-            placeholder="Select Pasar"
-            onChange={handleSelectChangeOwner}
-            className="dark:bg-dark-900"
-          />
-        </div>
-        <div>
-          <Label>Status</Label>
-          <Select
-            options={[
-              { value: "aktif", label: "Aktif" },
-              { value: "kosong", label: "Kosong" },
-              { value: "rusak", label: "Rusak" },
-            ]}
-            placeholder="Select Option"
-            onChange={handleSelectChangeStatus}
-            className="dark:bg-dark-900"
-          />
-        </div>
+          )}
+          {lapak && (
+            <div>
+              <Label>Status</Label>
+              <Select
+                options={statusOptions.map((status) => ({
+                  value: status.value,
+                  label: status.label,
+                }))}
+                placeholder="Select pasar status"
+                value={form.LAPAK_STATUS || "kosong"}
+                onChange={handleSelectChangeStatus}
+                className="dark:bg-dark-900"
+              />
+            </div>
+          )}
           <div className="flex justify-end gap-3">
             <Button size="sm" variant="outline" onClick={onClose}>
               Cancel

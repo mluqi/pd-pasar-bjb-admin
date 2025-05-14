@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
@@ -13,6 +13,14 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const rememberedUser = localStorage.getItem("rememberMe");
+    if (rememberedUser) {
+      setForm(JSON.parse(rememberedUser));
+      setIsChecked(true);
+    }
+  }, []);
 
   const navigate = useNavigate();
 
@@ -31,12 +39,13 @@ export default function SignInForm() {
     try {
       const res = await api.post("/auth/signin", form);
       localStorage.setItem("token", res.data.token);
-      
+
       if (isChecked) {
         localStorage.setItem("rememberMe", JSON.stringify(form));
       } else {
         localStorage.removeItem("rememberMe");
       }
+
       navigate("/dashboard");
     } catch (error) {
       console.error(error);
@@ -54,7 +63,7 @@ export default function SignInForm() {
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="w-full max-w-md pt-10 mx-auto">
+      {/* <div className="w-full max-w-md pt-10 mx-auto">
         <Link
           to="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -62,7 +71,7 @@ export default function SignInForm() {
           <ChevronLeftIcon className="size-5" />
           Back to dashboard
         </Link>
-      </div>
+      </div> */}
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">

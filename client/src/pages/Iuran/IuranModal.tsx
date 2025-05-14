@@ -5,7 +5,7 @@ import Label from "../../components/form/Label";
 import Button from "../../components/ui/button/Button";
 import DatePicker from "../../components/form/date-picker";
 import Select from "../../components/form/Select";
-import { usePedagangContext } from "../../context/PedagangContext";
+import { useDropdownContext } from "../../context/DropdownContext";
 
 interface Iuran {
   IURAN_CODE?: string;
@@ -17,10 +17,18 @@ interface Iuran {
   IURAN_WAKTU_BAYAR: string;
 }
 
-interface Pedagang {
-  CUST_CODE: string;
-  CUST_NAMA: string;
-}
+const metodeBayarOptions = [
+  { value: "cash", label: "Cash" },
+  { value: "transfer", label: "Transfer" },
+  { value: "qris", label: "Qris" },
+];
+
+const statusOptions = [
+  { value: "paid", label: "Paid" },
+  { value: "pending", label: "Pending" },
+  { value: "tidak berjualan", label: "Tidak Berjualan" },
+  { value: "tidak bayar", label: "Tidak Bayar" }
+]
 
 interface IuranModalProps {
   isOpen: boolean;
@@ -44,8 +52,7 @@ const IuranModal: React.FC<IuranModalProps> = ({
     IURAN_WAKTU_BAYAR: null,
   });
 
-  const { pedagangs, fetchPedagangs } = usePedagangContext();
-  const [pedagangList, setPedagangList] = useState<Pedagang[]>([]);
+  const { pedagangs, fetchAllPedagangs } = useDropdownContext();
 
   useEffect(() => {
     if (iuran) {
@@ -55,22 +62,18 @@ const IuranModal: React.FC<IuranModalProps> = ({
         IURAN_JUMLAH: iuran.IURAN_JUMLAH || "",
         IURAN_STATUS: iuran.IURAN_STATUS || "Pending",
         IURAN_METODE_BAYAR: iuran.IURAN_METODE_BAYAR || "",
-        IURAN_WAKTU_BAYAR: iuran.IURAN_WAKTU_BAYAR || null
+        IURAN_WAKTU_BAYAR: iuran.IURAN_WAKTU_BAYAR || null,
       });
     }
   }, [iuran]);
 
-    useEffect(() => {
-        if (!pedagangs.length) {
-          fetchPedagangs(); 
-        }
-      }, [pedagangs, fetchPedagangs]);
-      
-    useEffect(() => {
-        setPedagangList(pedagangs);
-      }, [pedagangs]);
+  useEffect(() => {
+    fetchAllPedagangs();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -87,24 +90,34 @@ const IuranModal: React.FC<IuranModalProps> = ({
           {iuran ? "Edit Iuran" : "Add Iuran"}
         </h4>
         <form className="flex flex-col gap-4">
-          <div>
+          {/* <div>
             <Label>Pedagang</Label>
             <Select
-                options={(pedagangList || []).map((pedagang) => ({
-                    value: pedagang.CUST_CODE,
-                    label: pedagang.CUST_NAMA,
-                }))}
+              options={[
+                { value: "", label: "All Pedagang" },
+                ...(pedagangs || []).map((pedagang) => ({
+                  value: pedagang.CUST_CODE,
+                  label: pedagang.CUST_NAMA,
+                })),
+              ]}
               placeholder="Select Pedagang"
-              onChange={(value) => setForm((prev) => ({ ...prev, IURAN_PEDAGANG: value }))}
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, IURAN_PEDAGANG: value }))
+              }
             />
-          </div>
+          </div> */}
           <div>
             <DatePicker
               id="tanggal"
               label="Tanggal"
               placeholder="Select a date"
+              defaultDate={
+                form.IURAN_TANGGAL ? new Date(form.IURAN_TANGGAL) : undefined
+              } // Set default date
               onChange={(dates) => {
-                const formattedDate = new Date(dates[0]).toISOString().split("T")[0];
+                const formattedDate = new Date(dates[0])
+                  .toISOString()
+                  .split("T")[0];
                 setForm((prev) => ({ ...prev, IURAN_TANGGAL: formattedDate }));
                 console.log("Selected date:", formattedDate);
               }}
@@ -123,26 +136,29 @@ const IuranModal: React.FC<IuranModalProps> = ({
           <div>
             <Label>Status</Label>
             <Select
-              options={[
-                { value: "paid", label: "Paid" },
-                { value: "pending", label: "Pending" },
-                { value: "tidak berjualan", label: "Tidak Berjualan" },
-                { value: "tidak bayar", label: "Tidak Bayar" },
-              ]}
+              options={statusOptions.map((status) => ({
+                value: status.value,
+                label: status.label,
+              }))}
               placeholder="Select Status"
-              onChange={(value) => setForm((prev) => ({ ...prev, IURAN_STATUS: value }))}
+              value={form.IURAN_STATUS}
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, IURAN_STATUS: value }))
+              }
             />
           </div>
           <div>
             <Label>Metode Bayar</Label>
             <Select
-              options={[
-                { value: "transfer", label: "Transfer" },
-                { value: "qris", label: "Qris" },
-                { value: "tunai", label: "Tunai" },
-              ]}
+              options={metodeBayarOptions.map((metode) => ({
+                value: metode.value,
+                label: metode.label,
+              }))}
               placeholder="Select Metode Bayar"
-              onChange={(value) => setForm((prev) => ({ ...prev, IURAN_METODE_BAYAR: value }))}
+              value={form.IURAN_METODE_BAYAR}
+              onChange={(value) =>
+                setForm((prev) => ({ ...prev, IURAN_METODE_BAYAR: value }))
+              }
             />
           </div>
           <div>
@@ -150,12 +166,18 @@ const IuranModal: React.FC<IuranModalProps> = ({
               id="waktu-bayar"
               label="Waktu Bayar"
               placeholder="Select a date"
+              defaultDate={
+                form.IURAN_WAKTU_BAYAR
+                  ? new Date(form.IURAN_WAKTU_BAYAR)
+                  : undefined
+              }
               onChange={(dates) => {
-                const formattedDate = new Date(dates[0]).toISOString().split("T")[0];
-                setForm((prev) => ({ ...prev, IURAN_WAKTU_BAYAR: formattedDate }));
-                console.log("Selected date:", formattedDate);
-              }
-              }
+                const formattedDate = new Date(dates[0]).toISOString();
+                setForm((prev) => ({
+                  ...prev,
+                  IURAN_WAKTU_BAYAR: formattedDate,
+                }));
+              }}
             />
           </div>
           <div className="flex justify-end gap-3">

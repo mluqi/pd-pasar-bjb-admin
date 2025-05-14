@@ -8,17 +8,80 @@ import {
 import { useEffect, useState } from "react";
 import IuranModal from "./IuranModal";
 import Badge from "../../components/ui/badge/Badge";
+import Button from "../../components/ui/button/Button";
+import Select from "../../components/form/Select";
+import Input from "../../components/form/input/InputField";
+
 import { useIuranContext } from "../../context/IuranContext";
+import RangeDatePicker from "../../components/form/RangeDatePicker";
+
+const limitOptions = [
+  { value: "10", label: "10 per page" },
+  { value: "20", label: "20 per page" },
+  { value: "50", label: "50 per page" },
+  { value: "100", label: "100 per page" },
+];
+
+const statusOptions = [
+  { value: "", label: "All Status" },
+  { value: "paid", label: "Paid" },
+  { value: "pending", label: "Pending" },
+  { value: "tidak berjualan", label: "Tidak Berjualan" },
+  { value: "tidak bayar", label: "Tidak Bayar" },
+];
+
+const metodeBayarOptions = [
+  { value: "", label: "All Metode Bayar" },
+  { value: "cash", label: "Cash" },
+  { value: "transfer", label: "Transfer" },
+  { value: "qris", label: "Qris" },
+];
 
 export default function IuranTable() {
-  const { iurans, fetchIurans, addIuran, editIuran, deleteIuran } = useIuranContext();
+  const { iurans, fetchIurans, addIuran, editIuran, deleteIuran } =
+    useIuranContext();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedIuran, setSelectedIuran] = useState(null);
+  const [search, setSearch] = useState(""); // State for search input
+  const [statusFilter, setStatusFilter] = useState(""); // State for status filter
+  const [metodeBayarFilter, setMetodeBayarFilter] = useState(""); // State for metode bayar filter
+  const [dateRange, setDateRange] = useState<[string | null, string | null]>([
+    null,
+    null,
+  ]);
+  const [page, setPage] = useState(1); // State untuk pagination
+  const [limit, setLimit] = useState(10); // State untuk jumlah data per halaman
+  const [totalPages, setTotalPages] = useState(1); // Total halaman dari API
+
+  const fetchIuransData = async () => {
+    try {
+      const [startDate, endDate] = dateRange;
+      const response = await fetchIurans(
+        page,
+        limit,
+        search,
+        statusFilter,
+        metodeBayarFilter,
+        startDate || "",
+        endDate || ""
+      );
+      setTotalPages(response.totalPages); // Update total pages
+    } catch (error) {
+      console.error("Failed to fetch iurans:", error);
+    }
+  };
 
   useEffect(() => {
-    fetchIurans();
-  }, []);
+    fetchIuransData();
+  }, [
+    page,
+    limit,
+    search,
+    statusFilter,
+    metodeBayarFilter,
+    dateRange,
+  ]);
 
   const openEditModal = (iuran) => {
     setSelectedIuran(iuran);
@@ -51,7 +114,9 @@ export default function IuranTable() {
   };
 
   const handleDeleteIuran = async (IURAN_CODE) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this iuran?");
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this iuran?"
+    );
     if (!confirmDelete) return;
     try {
       await deleteIuran(IURAN_CODE);
@@ -63,14 +128,50 @@ export default function IuranTable() {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <div className="flex justify-end p-4">
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
+    <div className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      <div className="flex flex-wrap gap-4 p-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-grow">
+          <Select
+            options={limitOptions}
+            onChange={(value) => {
+              setLimit(Number(value));
+              setPage(1);
+            }}
+            defaultValue={limit.toString()}
+            className="w-full sm:w-auto"
+          />
+          <Input
+            type="text"
+            placeholder="Search by code or pedagang"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <Select
+            options={statusOptions}
+            placeholder="All Status"
+            onChange={(value) => setStatusFilter(value)}
+            defaultValue=""
+            className="w-full sm:w-auto"
+          />
+          <Select
+            options={metodeBayarOptions}
+            placeholder="All Metode Bayar"
+            onChange={(value) => setMetodeBayarFilter(value)}
+            defaultValue=""
+            className="w-full sm:w-auto"
+          />
+          <RangeDatePicker
+            id="date-range"
+            placeholder="Select date range"
+            defaultDates={dateRange}
+            onChange={(dates) => {
+              setDateRange(dates);
+            }}
+          />
+        </div>
+        <Button onClick={openAddModal} className="w-full sm:w-auto">
           Add Iuran
-        </button>
+        </Button>
       </div>
       <div className="max-w-full overflow-x-auto">
         <Table>
@@ -112,9 +213,6 @@ export default function IuranTable() {
                     year: "numeric",
                     month: "2-digit",
                     day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
                   })}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
@@ -126,7 +224,7 @@ export default function IuranTable() {
                     color={
                       iuran.IURAN_STATUS === "paid"
                         ? "success"
-                        : iuran.IURAN_STATUS === "pending" 
+                        : iuran.IURAN_STATUS === "pending"
                         ? "warning"
                         : iuran.IURAN_STATUS === "tidak berjualan"
                         ? "warning"
@@ -141,15 +239,18 @@ export default function IuranTable() {
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {iuran.IURAN_WAKTU_BAYAR
-                  ? new Date(iuran.IURAN_WAKTU_BAYAR).toLocaleDateString("id-ID", {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })
-                  : ""}
+                    ? new Date(iuran.IURAN_WAKTU_BAYAR).toLocaleDateString(
+                        "id-ID",
+                        {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        }
+                      )
+                    : ""}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {iuran.IURAN_USER}
@@ -172,6 +273,21 @@ export default function IuranTable() {
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="flex justify-between items-center p-4">
+        <Button disabled={page === 1} onClick={() => setPage(page - 1)}>
+          Previous
+        </Button>
+        <span className="text-gray-700 dark:text-gray-400">
+          Page {page} of {totalPages}
+        </span>
+        <Button
+          disabled={page === totalPages}
+          onClick={() => setPage(page + 1)}
+        >
+          Next
+        </Button>
       </div>
 
       <IuranModal

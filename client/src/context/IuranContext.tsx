@@ -14,7 +14,7 @@ interface Iuran {
 
 interface IuranContextProps {
     iurans: Iuran[];
-    fetchIurans: () => Promise<void>;
+    fetchIurans: (page: number, limit: number, search: string, statusFilter: string, metodeBayarFilter: string, startDate: string, endDate: string) => Promise<void>;
     addIuran: (formData: FormData) => Promise<void>;
     editIuran: (IURAN_CODE: string, formData: FormData) => Promise<void>;
     deleteIuran: (IURAN_CODE: string) => Promise<void>;
@@ -24,14 +24,26 @@ const IuranContext = createContext<IuranContextProps | undefined>(undefined);
 
 export const IuranProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [iurans, setIurans] = useState<Iuran[]>([]);
-    const fetchIurans = async () => {
+    const fetchIurans = async (
+        page = 1,
+        limit = 10,
+        search = "",
+        statusFilter = "",
+        metodeBayarFilter = "",
+        startDate = "",
+        endDate = ""
+      ) => {
         try {
-            const res = await api.get("/iuran");
-            setIurans(res.data);
+          const res = await api.get(
+            `/iuran?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&metode=${metodeBayarFilter}&startDate=${startDate}&endDate=${endDate}`
+          );
+          setIurans(res.data.data);
+          return { totalPages: res.data.totalPages };
         } catch (error) {
-            console.error("Failed to fetch iurans:", error);
+          console.error("Failed to fetch iurans:", error);
+          return { totalPages: 1 };
         }
-    };
+      };
 
     const addIuran = async (formData: FormData) => {
         console.log("Adding iuran with formData:", formData);
@@ -44,15 +56,15 @@ export const IuranProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     
     const editIuran = async (IURAN_CODE: string, formData: FormData) => {
+        console.log(formData);
         try {
-            await api.put(`/iuran/${IURAN_CODE}`, formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
+            await api.put(`/iuran/${IURAN_CODE}`, formData);
             await fetchIurans();
         } catch (error) {
             console.error("Failed to edit iuran:", error);
         }
     };
+
     const deleteIuran = async (IURAN_CODE: string) => {
         try {
             await api.delete(`/iuran/${IURAN_CODE}`);

@@ -12,6 +12,11 @@ interface Pasar {
   pasar_logo?: string | File;
 }
 
+const statusOptions = [
+  { value: "A", label: "Aktif" },
+  { value: "N", label: "Nonaktif" },
+];
+
 interface PasarModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,16 +24,23 @@ interface PasarModalProps {
   onSave: (data: FormData) => void;
 }
 
-const PasarModal: React.FC<PasarModalProps> = ({ isOpen, onClose, pasar, onSave }) => {
+const PasarModal: React.FC<PasarModalProps> = ({
+  isOpen,
+  onClose,
+  pasar,
+  onSave,
+}) => {
   const [form, setForm] = useState<Partial<Pasar>>({
     pasar_nama: "",
     pasar_status: "",
     pasar_logo: undefined,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState("");
 
   useEffect(() => {
     if (pasar) {
+      console.log(pasar);
       setForm({
         pasar_nama: pasar.pasar_nama || "",
         pasar_status: pasar.pasar_status || "",
@@ -119,13 +131,14 @@ const PasarModal: React.FC<PasarModalProps> = ({ isOpen, onClose, pasar, onSave 
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Status</Label>
                   <Select
-                    onChange={handleSelectChange}
-                    defaultValue={form.pasar_status}
-                    options={[
-                      { value: "A", label: "Aktif" },
-                      { value: "N", label: "Nonaktif" },
-                    ]}
+                    options={statusOptions.map((status) => ({
+                      value: status.value,
+                      label: status.label,
+                    }))}
                     placeholder="Select pasar status"
+                    value={form.pasar_status}
+                    onChange={handleSelectChange}
+                    className="dark:bg-dark-900"
                   />
                 </div>
 

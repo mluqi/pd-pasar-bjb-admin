@@ -16,9 +16,10 @@ interface Lapak {
 
 interface LapakContextProps {
   lapaks: Lapak[];
-  fetchLapaks: () => Promise<void>;
+  fetchLapaks: (page: number, limit: number, search: string, statusFilter: string, pasar: string, owner: string) => Promise<void>;
   addLapak: (formData: FormData) => Promise<void>;
   editLapak: (LAPAK_CODE: string, formData: FormData) => Promise<void>;
+  editStatusLapak: (LAPAK_CODE: string, data: Partial<Lapak>) => Promise<void>;
   deleteLapak: (LAPAK_CODE: string) => Promise<void>;
 }
 
@@ -27,12 +28,23 @@ const LapakContext = createContext<LapakContextProps | undefined>(undefined);
 export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lapaks, setLapaks] = useState<Lapak[]>([]);
 
-  const fetchLapaks = async () => {
+  const fetchLapaks = async (
+    page = 1,
+    limit = 10,
+    search = "",
+    statusFilter = "",
+    pasar = "",
+    owner = ""
+  ) => {
     try {
-      const res = await api.get("/lapak");
-      setLapaks(res.data);
+      const res = await api.get(
+        `/lapak?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}&owner=${owner}`
+      );
+      setLapaks(res.data.data);
+      return { totalPages: res.data.totalPages };
     } catch (error) {
       console.error("Failed to fetch lapaks:", error);
+      return { totalPages: 1 };
     }
   };
 
@@ -55,6 +67,16 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const editStatusLapak = async (LAPAK_CODE: string, data: Partial<Lapak>) => {
+    try {
+      const res = await api.put(`/lapak/${LAPAK_CODE}/status`, data);
+      await fetchLapaks();
+      console.log(res)
+    } catch (error) {
+      console.error("Failed to edit lapak:", error);
+    }
+  };
+
   const deleteLapak = async (LAPAK_CODE: string) => {
     try {
       await api.delete(`/lapak/${LAPAK_CODE}`);
@@ -65,7 +87,7 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <LapakContext.Provider value={{ lapaks, fetchLapaks, addLapak, editLapak, deleteLapak }}>
+    <LapakContext.Provider value={{ lapaks, fetchLapaks, addLapak, editLapak, editStatusLapak, deleteLapak }}>
       {children}
     </LapakContext.Provider>
   );

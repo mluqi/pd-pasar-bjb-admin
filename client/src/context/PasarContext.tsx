@@ -19,21 +19,30 @@ interface PasarContextProps {
 const PasarContext = createContext<PasarContextProps | undefined>(undefined);
 
 export const PasarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [pasars, setPasars] = useState<Pasar[]>([]);
+const [pasars, setPasars] = useState<Pasar[]>([]);
 
-  const fetchPasars = async () => {
-    try {
-      const BASE_URL = "http://localhost:3000/uploads/";
-      const res = await api.get("/pasar");
-      const dataWithLogo = res.data.map((pasar: Pasar) => ({
-        ...pasar,
-        pasar_logo: pasar.pasar_logo ? `${BASE_URL}${pasar.pasar_logo}` : null,
-      }));
-      setPasars(dataWithLogo);
-    } catch (error) {
-      console.error("Failed to fetch pasars:", error);
-    }
-  };
+const fetchPasars = async (
+  page = 1,
+  limit = 10,
+  search = "",
+  statusFilter = ""
+) => {
+  try {
+    const BASE_URL = "http://localhost:3000/uploads/";
+    const res = await api.get(
+      `/pasar?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}`
+    );
+    const dataWithLogo = res.data.data.map((pasar: Pasar) => ({
+      ...pasar,
+      pasar_logo: pasar.pasar_logo ? `${BASE_URL}${pasar.pasar_logo}` : null,
+    }));
+    setPasars(dataWithLogo);
+    return { totalPages: res.data.totalPages };
+  } catch (error) {
+    console.error("Failed to fetch pasars:", error);
+    return { totalPages: 1 };
+  }
+};
 
   const addPasar = async (formData: FormData) => {
     try {

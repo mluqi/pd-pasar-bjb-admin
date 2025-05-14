@@ -26,6 +26,8 @@ import Pedagang from "./pages/Pedagang/Page";
 import LogAkses from "./pages/LogAkses/Page";
 import LogActivity from "./pages/LogActivity/Page";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TypeLapak from "./pages/TypeLapak/Page";
+import ResetPasswordPage from "./pages/ResetPassword/ResetPasswordPage";
 import { AuthProvider } from "./context/AuthContext";
 import { PasarProvider } from "./context/PasarContext";
 import { UserProvider } from "./context/UserContext";
@@ -34,6 +36,9 @@ import { LapakProvider } from "./context/LapakContext";
 import { IuranProvider } from "./context/IuranContext";
 import { LevelProvider } from "./context/LevelContext";
 import { LogProvider } from "./context/LogContext";
+import { LapakTypeProvider } from "./context/LapakTypeContext";
+import { DropdownProvider } from "./context/DropdownContext";
+import { DashboardProvider } from "./context/DashboardContext";
 
 export default function App() {
   return (
@@ -50,101 +55,142 @@ export default function App() {
             path="*"
             element={
               <AuthProvider>
-                <UserProvider>
-                  <LogProvider>
-                  <LevelProvider>
-                    <PasarProvider>
-                      <PedagangProvider>
-                        <LapakProvider>
-                          <IuranProvider>
-                            <Routes>
-                              <Route
-                                path="/"
-                                element={<Navigate to="/dashboard" />}
-                              />
-                              {/* Dashboard Layout */}
-                              <Route element={<AppLayout />}>
-                                <Route element={<ProtectedRoute />}>
-                                  <Route
-                                    index
-                                    path="/dashboard"
-                                    element={<Home />}
-                                  />
-                                  <Route
-                                    path="/user-management"
-                                    element={<UserManagement />}
-                                  />
-                                  <Route
-                                    path="/pasar-management"
-                                    element={<PasarManagement />}
-                                  />
-                                  <Route
-                                    path="/lapak-management"
-                                    element={<Lapak />}
-                                  />
-                                  <Route
-                                    path="/iuran-management"
-                                    element={<Iuran />}
-                                  />
-                                  <Route
-                                    path="/pedagang-management"
-                                    element={<Pedagang />}
-                                  />
-                                </Route>
-                                <Route
-                                  path="/log-akses"
-                                  element={<LogAkses />}
-                                />
-                                <Route
-                                  path="/log-activity"
-                                  element={<LogActivity />}
-                                />
-                                {/* Others Page */}
-                                <Route
-                                  path="/profile"
-                                  element={<UserProfiles />}
-                                />
-                                <Route path="/calendar" element={<Calendar />} />
-                                <Route path="/blank" element={<Blank />} />
+                <DropdownProvider>
+                  <UserProvider>
+                    <LogProvider>
+                      <LevelProvider>
+                        <PasarProvider>
+                          <PedagangProvider>
+                            <LapakProvider>
+                              <LapakTypeProvider>
+                                <IuranProvider>
+                                  <DashboardProvider>
+                                    <Routes>
+                                      <Route
+                                        path="/"
+                                        element={<Navigate to="/dashboard" />}
+                                      />
+                                      {/* Dashboard Layout */}
+                                      <Route element={<AppLayout />}>
+                                        <Route element={<ProtectedRoute />}>
+                                          <Route
+                                            index
+                                            path="/dashboard"
+                                            element={<Home />}
+                                          />
+                                          <Route
+                                            path="/user-management"
+                                            element={<UserManagement />}
+                                          />
+                                          <Route
+                                            path="/user-management/reset-password/:userCode"
+                                            element={<ResetPasswordPage />}
+                                          />
+                                          <Route
+                                            path="/pasar-management"
+                                            element={<PasarManagement />}
+                                          />
+                                          <Route
+                                            path="/lapak-management"
+                                            element={<Lapak />}
+                                          />
+                                          <Route
+                                            path="/iuran-management"
+                                            element={<Iuran />}
+                                          />
+                                          <Route
+                                            path="/pedagang-management"
+                                            element={<Pedagang />}
+                                          />
+                                        </Route>
+                                        <Route
+                                          path="/log-akses"
+                                          element={<LogAkses />}
+                                        />
+                                        <Route
+                                          path="/log-activity"
+                                          element={<LogActivity />}
+                                        />
+                                        <Route
+                                          path="/tipe-lapak"
+                                          element={<TypeLapak />}
+                                        />
+                                        {/* Others Page */}
+                                        <Route
+                                          path="/profile"
+                                          element={<UserProfiles />}
+                                        />
+                                        <Route
+                                          path="/calendar"
+                                          element={<Calendar />}
+                                        />
+                                        <Route
+                                          path="/blank"
+                                          element={<Blank />}
+                                        />
 
-                                {/* Forms */}
-                                <Route
-                                  path="/form-elements"
-                                  element={<FormElements />}
-                                />
+                                        {/* Forms */}
+                                        <Route
+                                          path="/form-elements"
+                                          element={<FormElements />}
+                                        />
 
-                                {/* Tables */}
-                                <Route
-                                  path="/basic-tables"
-                                  element={<BasicTables />}
-                                />
+                                        {/* Tables */}
+                                        <Route
+                                          path="/basic-tables"
+                                          element={<BasicTables />}
+                                        />
 
-                                {/* Ui Elements */}
-                                <Route path="/alerts" element={<Alerts />} />
-                                <Route path="/avatars" element={<Avatars />} />
-                                <Route path="/badge" element={<Badges />} />
-                                <Route path="/buttons" element={<Buttons />} />
-                                <Route path="/images" element={<Images />} />
-                                <Route path="/videos" element={<Videos />} />
+                                        {/* Ui Elements */}
+                                        <Route
+                                          path="/alerts"
+                                          element={<Alerts />}
+                                        />
+                                        <Route
+                                          path="/avatars"
+                                          element={<Avatars />}
+                                        />
+                                        <Route
+                                          path="/badge"
+                                          element={<Badges />}
+                                        />
+                                        <Route
+                                          path="/buttons"
+                                          element={<Buttons />}
+                                        />
+                                        <Route
+                                          path="/images"
+                                          element={<Images />}
+                                        />
+                                        <Route
+                                          path="/videos"
+                                          element={<Videos />}
+                                        />
 
-                                {/* Charts */}
-                                <Route
-                                  path="/line-chart"
-                                  element={<LineChart />}
-                                />
-                                <Route path="/bar-chart" element={<BarChart />} />
-                              </Route>
+                                        {/* Charts */}
+                                        <Route
+                                          path="/line-chart"
+                                          element={<LineChart />}
+                                        />
+                                        <Route
+                                          path="/bar-chart"
+                                          element={<BarChart />}
+                                        />
+                                      </Route>
 
-                              {/* Fallback Route */}
-                              <Route path="*" element={<NotFound />} />
-                            </Routes>
-                          </IuranProvider>
-                        </LapakProvider>
-                      </PedagangProvider>
-                    </PasarProvider>
-                  </LevelProvider>
-                  </LogProvider>
-                </UserProvider>
+                                      {/* Fallback Route */}
+                                      <Route path="*" element={<NotFound />} />
+                                    </Routes>
+                                  </DashboardProvider>
+                                </IuranProvider>
+                              </LapakTypeProvider>
+                            </LapakProvider>
+                          </PedagangProvider>
+                        </PasarProvider>
+                      </LevelProvider>
+                    </LogProvider>
+                  </UserProvider>
+                </DropdownProvider>
               </AuthProvider>
             }
           />

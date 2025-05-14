@@ -4,9 +4,10 @@ import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Button from "../../components/ui/button/Button";
 import Select from "../../components/form/Select";
-// import api from "../../services/api";
-import { usePasarContext } from "../../context/PasarContext";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
+import { useDropdownContext } from "../../context/DropdownContext";
 import { useLevelContext } from "../../context/LevelContext";
+import { useNavigate } from "react-router-dom";
 
 interface User {
   user_code?: string;
@@ -15,20 +16,19 @@ interface User {
   user_email: string;
   user_level: string;
   user_foto?: string | File;
-  user_owner?: string;
   user_status?: string;
   pasar_code?: string;
   user_pass?: string;
 }
 
-interface Pasar {
-  pasar_code: string;
-  pasar_nama: string;
-}
-
 interface Level {
   level_code: string;
   level_name: string;
+}
+
+interface Pasar {
+  pasar_code: string;
+  pasar_nama: string;
 }
 
 interface UserModalProps {
@@ -53,33 +53,28 @@ const UserModal: React.FC<UserModalProps> = ({
     user_foto: undefined,
     user_pass: "",
   });
-  const { pasars, fetchPasars } = usePasarContext();
+  const navigate = useNavigate();
+
   const { levels, fetchLevels } = useLevelContext();
+  const { pasars, fetchAllPasars } = useDropdownContext();
+
+  const [levelList, setLevelList] = useState<Level[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const [pasarList, setPasarList] = useState<Pasar[]>([]);
-  const [ levelList, setLevelList ] = useState<Level[]>([]);
+  useEffect(() => {
+    fetchAllPasars();
+  }, []);
 
-    useEffect(() => {
-        if (!pasars.length) {
-          fetchPasars(); 
-        }
-      }, [pasars, fetchPasars]);
-      
-    useEffect(() => {
-        setPasarList(pasars);
-      }, [pasars]);
+  useEffect(() => {
+    if (!levels.length) {
+      fetchLevels();
+    }
+  }, [levels, fetchLevels]);
 
-    useEffect(() => {
-        if (!levels.length) {
-          fetchLevels(); 
-        }
-      }
-      , [levels, fetchLevels]);
-      
-    useEffect(() => {
-        setLevelList(levels);
-      }, [levels]);
+  useEffect(() => {
+    setLevelList(levels);
+  }, [levels]);
 
   useEffect(() => {
     if (user) {
@@ -110,7 +105,7 @@ const UserModal: React.FC<UserModalProps> = ({
   const handleSelectChangePasar = (value: string) => {
     setForm((prev) => ({ ...prev, pasar_code: value }));
     console.log("Selected value:", value);
-  }
+  };
 
   const handleSelectChangeLevel = (value: string) => {
     setForm((prev) => ({ ...prev, user_level: value }));
@@ -220,13 +215,25 @@ const UserModal: React.FC<UserModalProps> = ({
                 {!user && (
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Password</Label>
-                    <Input
-                      type="password"
-                      name="user_pass"
-                      value={form.user_pass || ""}
-                      onChange={handleChange}
-                      placeholder="Enter user password"
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        name="user_pass"
+                        value={form.user_pass || ""}
+                        onChange={handleChange}
+                        placeholder="Enter user password"
+                      />
+                      <span
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+                      >
+                        {showPassword ? (
+                          <EyeIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
+                        ) : (
+                          <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400 size-5" />
+                        )}
+                      </span>
+                    </div>
                   </div>
                 )}
                 <div className="col-span-2 lg:col-span-1">
@@ -258,6 +265,7 @@ const UserModal: React.FC<UserModalProps> = ({
                       value: level.level_code,
                       label: level.level_name,
                     }))}
+                    value={form.user_level || ""}
                     placeholder="Select Role Type"
                     onChange={handleSelectChangeLevel}
                     className="dark:bg-dark-900"
@@ -267,10 +275,14 @@ const UserModal: React.FC<UserModalProps> = ({
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Pasar</Label>
                   <Select
-                    options={(pasars || []).map((pasar) => ({
-                      value: pasar.pasar_code,
-                      label: pasar.pasar_nama,
-                    }))}
+                    options={[
+                      { value: "", label: "All Pasars" },
+                      ...(pasars || []).map((pasar) => ({
+                        value: pasar.pasar_code,
+                        label: pasar.pasar_nama,
+                      })),
+                    ]}
+                    value={form.pasar_code || ""}
                     placeholder="Select Pasar"
                     onChange={handleSelectChangePasar}
                     className="dark:bg-dark-900"
@@ -284,6 +296,7 @@ const UserModal: React.FC<UserModalProps> = ({
                       { value: "A", label: "Aktif" },
                       { value: "N", label: "Nonaktif" },
                     ]}
+                    value={form.user_status || ""}
                     placeholder="Select Status"
                     onChange={handleSelectChangeStatus}
                     className="dark:bg-dark-900"
@@ -306,6 +319,21 @@ const UserModal: React.FC<UserModalProps> = ({
                     />
                   )}
                 </div>
+                {user && (
+                  <div className="flex justify-end mt-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        navigate(
+                          `/user-management/reset-password/${user.user_code}`
+                        )
+                      }
+                    >
+                      Reset Password
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

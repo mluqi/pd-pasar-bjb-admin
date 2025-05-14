@@ -14,7 +14,7 @@ interface User {
 
 interface UserContextProps {
   users: User[];
-  fetchUsers: () => Promise<void>;
+  fetchUsers: (page: number, limit: number, search: string, statusFilter: string, pasar: string) => Promise<void>;
   addUser: (formData: FormData) => Promise<void>;
   editUser: (user_code: string, formData: FormData) => Promise<void>;
   deleteUser: (user_code: string) => Promise<void>;
@@ -27,17 +27,41 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [users, setUsers] = useState<User[]>([]);
 
-  const fetchUsers = async () => {
+  // const fetchUsers = async () => {
+  //   try {
+  //     const BASE_URL = "http://localhost:3000/uploads/";
+  //     const res = await api.get("/user");
+  //     const usersWithPhoto = res.data.map((user: User) => ({
+  //       ...user,
+  //       user_foto: user.user_foto ? `${BASE_URL}${user.user_foto}` : null,
+  //     }));
+  //     setUsers(usersWithPhoto);
+  //   } catch (error) {
+  //     console.error("Failed to fetch users:", error);
+  //   }
+  // };
+
+  const fetchUsers = async (
+    page = 1,
+    limit = 10,
+    search = "",
+    statusFilter = "",
+    pasar = ""
+  ) => {
     try {
       const BASE_URL = "http://localhost:3000/uploads/";
-      const res = await api.get("/user");
-      const usersWithPhoto = res.data.map((user: User) => ({
+      const res = await api.get(
+        `/user?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}`
+      );
+            const usersWithPhoto = res.data.data.map((user: User) => ({
         ...user,
         user_foto: user.user_foto ? `${BASE_URL}${user.user_foto}` : null,
       }));
       setUsers(usersWithPhoto);
+      return { totalPages: res.data.totalPages };
     } catch (error) {
       console.error("Failed to fetch users:", error);
+      return { totalPages: 1 };
     }
   };
 
