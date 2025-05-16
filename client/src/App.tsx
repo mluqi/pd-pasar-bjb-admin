@@ -30,6 +30,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import TypeLapak from "./pages/TypeLapak/Page";
 import ResetPasswordPage from "./pages/ResetPassword/ResetPasswordPage";
 import PedagangDetail from "./pages/Pedagang/PedagangDetail";
+import LapakQrPage from "./pages/Lapak/LapakQrPage";
 import { AuthProvider } from "./context/AuthContext";
 import { PasarProvider } from "./context/PasarContext";
 import { UserProvider } from "./context/UserContext";
@@ -132,6 +133,10 @@ export default function App() {
                                           <Route
                                             path="/pedagang-management/detail/:custCode"
                                             element={<PedagangDetail />}
+                                          />
+                                          <Route
+                                            path="/lapak-management/qrcode/:lapakCode"
+                                            element={<LapakQrPage />}
                                           />
                                         </Route>
                                       </Route>

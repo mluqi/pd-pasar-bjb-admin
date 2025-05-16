@@ -90,7 +90,7 @@ const IuranModal: React.FC<IuranModalProps> = ({
           {iuran ? "Edit Iuran" : "Add Iuran"}
         </h4>
         <form className="flex flex-col gap-4">
-          {/* <div>
+          <div>
             <Label>Pedagang</Label>
             <Select
               options={[
@@ -105,7 +105,7 @@ const IuranModal: React.FC<IuranModalProps> = ({
                 setForm((prev) => ({ ...prev, IURAN_PEDAGANG: value }))
               }
             />
-          </div> */}
+          </div>
           <div>
             <DatePicker
               id="tanggal"

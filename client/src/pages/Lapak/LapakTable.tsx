@@ -14,6 +14,7 @@ import Input from "../../components/form/input/InputField";
 
 import { useLapakContext } from "../../context/LapakContext";
 import { useDropdownContext } from "../../context/DropdownContext";
+import { Link } from "react-router-dom";
 
 const limitOptions = [
   { value: "10", label: "10 per page" },
@@ -201,7 +202,12 @@ export default function LapakTable() {
             {lapaks.map((lapak) => (
               <TableRow key={lapak.LAPAK_CODE}>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {lapak.LAPAK_CODE}
+                  <Link
+                    to={`/lapak-management/qrcode/${lapak.LAPAK_CODE}`}
+                    className="text-blue-500 hover:underline"
+                  >
+                    {lapak.LAPAK_CODE}
+                  </Link>
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {lapak.LAPAK_NAMA}

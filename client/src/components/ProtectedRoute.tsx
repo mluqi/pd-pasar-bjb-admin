@@ -30,7 +30,8 @@ const ProtectedRoute: React.FC = () => {
   const whitelistedPaths = [
     '/profile',
     '/user-management/reset-password',
-    '/pedagang-management/detail/:custCode'
+    '/pedagang-management/detail/:custCode',
+    '/lapak-management/qrcode/:lapakCode'
   ];
 
   useEffect(() => {

@@ -3,6 +3,7 @@ const {
   DB_PEDAGANG,
   data_pasar,
   DB_TYPE_LAPAK,
+  DB_IURAN,
 } = require("../models");
 const { Op, where } = require("sequelize");
 const { addLogActivity } = require("./logController");
@@ -95,11 +96,36 @@ exports.getAllLapakWithoutPagination = async (req, res) => {
 };
 
 exports.getLapakByCode = async (req, res) => {
+  const userId = req.user.id;
+  const userLevel = req.user.level;
+  const userPasar = req.user.owner;
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+
   try {
+    const whereClause = {
+      [Op.and]: [
+        { LAPAK_CODE: req.params.code },
+        userLevel !== "SUA" ? { LAPAK_OWNER: userPasar } : {},
+      ],
+    };
+
     const lapak = await DB_LAPAK.findOne({
-      where: { LAPAK_CODE: req.params.code },
+      where: whereClause,
       include: [
-        { model: DB_PEDAGANG },
+        {
+          model: DB_PEDAGANG,
+          include: [
+            {
+              model: DB_IURAN,
+              as: "iurans",
+              where: { IURAN_STATUS: "pending" },
+              required: false,
+            },
+          ],
+        },
         {
           model: data_pasar,
           as: "pasar",
@@ -107,7 +133,9 @@ exports.getLapakByCode = async (req, res) => {
         },
       ],
     });
-    if (!lapak) return res.status(404).json({ message: "Lapak not found" });
+    if (!lapak) {
+      res.status(404).json({ message: "Lapak not found" });
+    }
     res.json(lapak);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -313,7 +341,7 @@ exports.updateLapakStatus = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: pedagang.CUST_CODE,
       LOG_DETAIL: "success",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
