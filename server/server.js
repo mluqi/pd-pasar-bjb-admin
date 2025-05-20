@@ -13,12 +13,15 @@ const pedagangRoutes = require("./routes/pedagangRoutes");
 const lapakRoutes = require("./routes/lapakRoutes");
 const logRoutes = require("./routes/logRoutes");
 const menuRoutes = require("./routes/menuRoutes");
-const { generateDailyIuran } = require("./services/iuranScheduler");
+require("./services/iuranScheduler");
 
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
+
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({ extended: true }));
 
@@ -31,17 +34,15 @@ app.use("/api/user", userRoutes);
 app.use("/api/iuran", iuranRoutes);
 app.use("/api/pedagang", pedagangRoutes);
 app.use("/api/lapak", lapakRoutes);
-app.use("/api/menus", menuRoutes)
+app.use("/api/menus", menuRoutes);
 app.use("/api", logRoutes);
 
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-generateDailyIuran();
-
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
-server.listen(PORT, HOST, () => {
-  console.log(`Server is running on http://${HOST}:${PORT} - accessible via localhost and local IP`);
+server.listen(PORT, () => {
+  console.log(
+    `Server is running on PORT ${PORT}`
+  );
 });
-

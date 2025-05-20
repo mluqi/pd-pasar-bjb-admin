@@ -2,20 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 // import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
-import UnauthorizedPage from "./pages/OtherPage/UnauthorizedPage"; // Import the new Unauthorized page
+import UnauthorizedPage from "./pages/OtherPage/UnauthorizedPage";
 import UserProfiles from "./pages/UserProfiles";
-// import Videos from "./pages/UiElements/Videos";
-// import Images from "./pages/UiElements/Images";
-// import Alerts from "./pages/UiElements/Alerts";
-// import Badges from "./pages/UiElements/Badges";
-// import Avatars from "./pages/UiElements/Avatars";
-// import Buttons from "./pages/UiElements/Buttons";
-// import LineChart from "./pages/Charts/LineChart";
-// import BarChart from "./pages/Charts/BarChart";
-// import Calendar from "./pages/Calendar";
-// import BasicTables from "./pages/Tables/BasicTables";
-// import FormElements from "./pages/Forms/FormElements";
-// import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
@@ -31,7 +19,7 @@ import TypeLapak from "./pages/TypeLapak/Page";
 import ResetPasswordPage from "./pages/ResetPassword/ResetPasswordPage";
 import PedagangDetail from "./pages/Pedagang/PedagangDetail";
 import LapakQrPage from "./pages/Lapak/LapakQrPage";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { PasarProvider } from "./context/PasarContext";
 import { UserProvider } from "./context/UserContext";
 import { PedagangProvider } from "./context/PedagangContext";
@@ -43,122 +31,143 @@ import { LapakTypeProvider } from "./context/LapakTypeContext";
 import { DropdownProvider } from "./context/DropdownContext";
 import { DashboardProvider } from "./context/DashboardContext";
 
+// Component to handle root redirect logic
+const RootRedirect = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-gray-300 border-t-blue-600"></div>
+          <div className="mt-2">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <Navigate to="/signin" replace />;
+};
+
+// Component to handle 404 for non-authenticated users
+const PublicNotFound = () => {
+  return <NotFound />;
+};
+
+// Protected Routes Wrapper
+const ProtectedRoutesWrapper = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full border-gray-300 border-t-blue-600"></div>
+          <div className="mt-2">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, only allow specific routes
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/" element={<Navigate to="/signin" replace />} />
+        <Route path="/unauthorized" element={<Navigate to="/signin" replace />} />
+        <Route path="*" element={<PublicNotFound />} />
+      </Routes>
+    );
+  }
+
+  // If authenticated, show full protected routes
+  return (
+    <DropdownProvider>
+      <UserProvider>
+        <LogProvider>
+          <LevelProvider>
+            <PasarProvider>
+              <PedagangProvider>
+                <LapakProvider>
+                  <LapakTypeProvider>
+                    <IuranProvider>
+                      <DashboardProvider>
+                        <Routes>
+                          {/* Root redirect with auth logic */}
+                          <Route path="/" element={<RootRedirect />} />
+
+                          {/* Unauthorized Page - accessible when authenticated */}
+                          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+                          {/* Dashboard Layout with Authorization Check */}
+                          <Route element={<AppLayout />}>
+                            <Route element={<ProtectedRoute />}>
+                              <Route path="/dashboard" element={<Home />} />
+                              <Route path="/user-management" element={<UserManagement />} />
+                              <Route path="/pasar-management" element={<PasarManagement />} />
+                              <Route path="/lapak-management" element={<Lapak />} />
+                              <Route path="/iuran-management" element={<Iuran />} />
+                              <Route path="/pedagang-management" element={<Pedagang />} />
+                              <Route path="/log-akses" element={<LogAkses />} />
+                              <Route path="/log-activity" element={<LogActivity />} />
+                              <Route path="/tipe-lapak" element={<TypeLapak />} />
+
+                              {/* Others Page */}
+                              <Route path="/profile" element={<UserProfiles />} />
+                              <Route 
+                                path="/user-management/reset-password/:userCode" 
+                                element={<ResetPasswordPage />} 
+                              />
+                              <Route 
+                                path="/pedagang-management/detail/:custCode" 
+                                element={<PedagangDetail />} 
+                              />
+                              <Route 
+                                path="/lapak-management/qrcode/:lapakCode" 
+                                element={<LapakQrPage />} 
+                              />
+                            </Route>
+                          </Route>
+
+                          {/* Fallback Route for authenticated users */}
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </DashboardProvider>
+                    </IuranProvider>
+                  </LapakTypeProvider>
+                </LapakProvider>
+              </PedagangProvider>
+            </PasarProvider>
+          </LevelProvider>
+        </LogProvider>
+      </UserProvider>
+    </DropdownProvider>
+  );
+};
+
 export default function App() {
   return (
-    <>
-      <Router>
-        <ScrollToTop />
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/signin" element={<SignIn />} />
-          {/* <Route path="/signup" element={<SignUp />} /> */}
+    <Router>
+      <ScrollToTop />
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/signin" element={<SignIn />} />
+        {/* <Route path="/signup" element={<SignUp />} /> */}
 
-          {/* Protected Routes */}
-          <Route
-            path="*"
-            element={
-              <AuthProvider>
-                <DropdownProvider>
-                  <UserProvider>
-                    <LogProvider>
-                      <LevelProvider>
-                        <PasarProvider>
-                          <PedagangProvider>
-                            <LapakProvider>
-                              <LapakTypeProvider>
-                                <IuranProvider>
-                                  <DashboardProvider>
-                                    <Routes>
-                                      <Route
-                                        path="/"
-                                        element={<Navigate to="/dashboard" />}
-                                      />
-
-                                      {/* Unauthorized Page - Public but requires login */}
-                                      <Route
-                                        path="/unauthorized"
-                                        element={<UnauthorizedPage />}
-                                      />
-
-                                      {/* Dashboard Layout with Authorization Check */}
-                                      <Route element={<AppLayout />}>
-                                        <Route element={<ProtectedRoute />}>
-                                          <Route
-                                            index
-                                            path="/dashboard"
-                                            element={<Home />}
-                                          />
-                                          <Route
-                                            path="/user-management"
-                                            element={<UserManagement />}
-                                          />
-                                          <Route
-                                            path="/pasar-management"
-                                            element={<PasarManagement />}
-                                          />
-                                          <Route
-                                            path="/lapak-management"
-                                            element={<Lapak />}
-                                          />
-                                          <Route
-                                            path="/iuran-management"
-                                            element={<Iuran />}
-                                          />
-                                          <Route
-                                            path="/pedagang-management"
-                                            element={<Pedagang />}
-                                          />
-                                          <Route
-                                            path="/log-akses"
-                                            element={<LogAkses />}
-                                          />
-                                          <Route
-                                            path="/log-activity"
-                                            element={<LogActivity />}
-                                          />
-                                          <Route
-                                            path="/tipe-lapak"
-                                            element={<TypeLapak />}
-                                          />
-
-                                          {/* Others Page */}
-                                          <Route
-                                            path="/profile"
-                                            element={<UserProfiles />}
-                                          />
-                                          <Route
-                                            path="/user-management/reset-password/:userCode"
-                                            element={<ResetPasswordPage />}
-                                          />
-                                          <Route
-                                            path="/pedagang-management/detail/:custCode"
-                                            element={<PedagangDetail />}
-                                          />
-                                          <Route
-                                            path="/lapak-management/qrcode/:lapakCode"
-                                            element={<LapakQrPage />}
-                                          />
-                                        </Route>
-                                      </Route>
-
-                                      {/* Fallback Route */}
-                                      <Route path="*" element={<NotFound />} />
-                                    </Routes>
-                                  </DashboardProvider>
-                                </IuranProvider>
-                              </LapakTypeProvider>
-                            </LapakProvider>
-                          </PedagangProvider>
-                        </PasarProvider>
-                      </LevelProvider>
-                    </LogProvider>
-                  </UserProvider>
-                </DropdownProvider>
-              </AuthProvider>
-            }
-          />
-        </Routes>
-      </Router>
-    </>
+        {/* All other routes with AuthProvider */}
+        <Route
+          path="*"
+          element={
+            <AuthProvider>
+              <ProtectedRoutesWrapper />
+            </AuthProvider>
+          }
+        />
+      </Routes>
+    </Router>
   );
 }

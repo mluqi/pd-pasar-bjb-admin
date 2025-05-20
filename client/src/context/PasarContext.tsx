@@ -28,7 +28,7 @@ const fetchPasars = async (
   statusFilter = ""
 ) => {
   try {
-    const BASE_URL = "http://localhost:3000/uploads/";
+    const BASE_URL = "http://dev2.palindo.id:4000/uploads/";
     const res = await api.get(
       `/pasar?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}`
     );

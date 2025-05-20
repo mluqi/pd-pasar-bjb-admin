@@ -218,21 +218,21 @@ const PedagangDetail: React.FC = () => {
                   <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
                     Lapak
                   </p>
-                  <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                    {pedagang.lapaks && pedagang.lapaks.length > 0 ? (
-                      <ul className="list-disc list-inside pl-5 mt-2">
-                        {pedagang.lapaks.map((lapak) => (
-                          <li key={lapak.LAPAK_CODE}>
-                            {lapak.LAPAK_NAMA} (Mulai:{" "}
-                            {formatDate(lapak.LAPAK_MULAI)}, Akhir:{" "}
-                            {formatDate(lapak.LAPAK_AKHIR)})
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="mt-2">Tidak ada lapak terdaftar.</p>
-                    )}
-                  </p>
+                  {pedagang.lapaks && pedagang.lapaks.length > 0 ? (
+                    <ul className="text-sm font-medium text-gray-800 dark:text-white/90 list-disc list-inside pl-5 mt-2">
+                      {pedagang.lapaks.map((lapak) => (
+                        <li key={lapak.LAPAK_CODE}>
+                          {lapak.LAPAK_NAMA} (Mulai:{" "}
+                          {formatDate(lapak.LAPAK_MULAI)}, Akhir:{" "}
+                          {formatDate(lapak.LAPAK_AKHIR)})
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm font-medium text-gray-800 dark:text-white/90 mt-2">
+                      Tidak ada lapak terdaftar.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

@@ -17,7 +17,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://dev2.palindo.id:4000",
         changeOrigin: true,
       },
     },

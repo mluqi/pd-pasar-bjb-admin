@@ -6,7 +6,7 @@ import Label from "../form/Label";
 import { useEffect, useState } from "react";
 import { useAuth } from '../../context/AuthContext';
 
-const BASE_URL = "http://localhost:3000/uploads/";
+const BASE_URL = "http://dev2.palindo.id:4000/uploads/";
 import api from "../../services/api";
 import FileInput from "../form/input/FileInput";
 

@@ -49,7 +49,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     pasar = ""
   ) => {
     try {
-      const BASE_URL = "http://localhost:3000/uploads/";
+      const BASE_URL = "http://dev2.palindo.id:4000/uploads/";
       const res = await api.get(
         `/user?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}`
       );
