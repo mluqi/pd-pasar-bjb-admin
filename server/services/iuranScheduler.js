@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { DB_IURAN, DB_PEDAGANG } = require("../models");
+const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models"); // Import DB_LAPAK
 const { Op } = require("sequelize");
 
 const generateDailyIuran = async () => {
@@ -17,10 +17,20 @@ const generateDailyIuran = async () => {
     todayEnd.setHours(23, 59, 59, 999);
 
     const activePedagangs = await DB_PEDAGANG.findAll({
+      // Find active pedagangs
       where: { CUST_STATUS: "aktif" },
-      attributes: ['CUST_CODE', 'CUST_IURAN'] 
+      attributes: ['CUST_CODE', 'CUST_IURAN'],
+      include: [{
+        model: DB_LAPAK,
+        where: { LAPAK_STATUS: "aktif" },
+        attributes: [], 
+        required: true
+      }]
     });
 
+    console.log(`Found ${activePedagangs.length} active pedagangs with active lapaks for iuran generation.`);
+
+    // Loop through the filtered list of pedagangs
     for (const pedagang of activePedagangs) {
       if (pedagang.CUST_IURAN == null) {
         console.warn(`Pedagang ${pedagang.CUST_CODE} is missing CUST_IURAN or CUST_LAPAK. Skipping iuran generation.`);
@@ -40,7 +50,7 @@ const generateDailyIuran = async () => {
       });
 
       if (existingIuranForPedagangToday) {
-        console.log(`Iuran already exists for pedagang: ${pedagang.CUST_CODE} (Lapak: ${pedagang.CUST_LAPAK}, Jumlah: ${pedagang.CUST_IURAN}) on ${processingDate.toDateString()}. Skipping.`);
+        console.log(`Iuran already exists for pedagang: ${pedagang.CUST_CODE} (Jumlah: ${pedagang.CUST_IURAN}) on ${processingDate.toDateString()}. Skipping.`);
         continue; // Skip to the next pedagang
       }
 
@@ -76,7 +86,7 @@ const generateDailyIuran = async () => {
       };
 
       await DB_IURAN.create(iuranData);
-      console.log(`Iuran generated for pedagang: ${pedagang.CUST_CODE} (Lapak: ${pedagang.CUST_LAPAK}, Jumlah: ${pedagang.CUST_IURAN})`);
+      console.log(`Iuran generated for pedagang: ${pedagang.CUST_CODE} (Jumlah: ${pedagang.CUST_IURAN})`);
     }
   } catch (error) {
     console.error("Failed to generate daily iuran:", error);

@@ -1,14 +1,13 @@
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: 'http://dev2.palindo.id:4000/api', // Adjust this to your API base URL
+  baseURL: "https://dev1-p3.palindo.id/api",
   timeout: 10000,
 });
 
-// Request interceptor to add token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -19,33 +18,29 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle auth errors globally
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    // Handle 401 (Unauthorized) and 403 (Forbidden) globally
-    if (error.response?.status === 401 || error.response?.status === 403) {
-      const token = localStorage.getItem('token');
-      
-      // Only handle logout if user was actually logged in (had a token)
+    if (error.response?.status === 401) {
+      const token = localStorage.getItem("token");
+
       if (token) {
-        // Clear token from localStorage
-        localStorage.removeItem('token');
-        
-        // Only redirect if not already on signin page
-        if (window.location.pathname !== '/signin') {
-          // Add a flag to indicate forced logout
-          sessionStorage.setItem('forceLogout', 'true');
-          sessionStorage.setItem('logoutReason', 'Sesi Anda telah berakhir atau Anda telah login di perangkat lain.');
-          
-          // Redirect to signin
-          window.location.href = '/signin';
+        localStorage.removeItem("token");
+
+        if (window.location.pathname !== "/signin") {
+          sessionStorage.setItem("forceLogout", "true");
+          sessionStorage.setItem(
+            "logoutReason",
+            "Sesi Anda telah berakhir atau Anda telah login di perangkat lain."
+          );
+
+          window.location.href = "/signin";
         }
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

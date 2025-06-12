@@ -14,7 +14,13 @@ interface User {
 
 interface UserContextProps {
   users: User[];
-  fetchUsers: (page: number, limit: number, search: string, statusFilter: string, pasar: string) => Promise<void>;
+  fetchUsers: (
+    page: number,
+    limit: number,
+    search: string,
+    statusFilter: string,
+    pasar: string
+  ) => Promise<void>;
   addUser: (formData: FormData) => Promise<void>;
   editUser: (user_code: string, formData: FormData) => Promise<void>;
   deleteUser: (user_code: string) => Promise<void>;
@@ -49,11 +55,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     pasar = ""
   ) => {
     try {
-      const BASE_URL = "http://dev2.palindo.id:4000/uploads/";
+      const BASE_URL = "http://127.0.0.1/uploads/";
       const res = await api.get(
         `/user?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}`
       );
-            const usersWithPhoto = res.data.data.map((user: User) => ({
+      const usersWithPhoto = res.data.data.map((user: User) => ({
         ...user,
         user_foto: user.user_foto ? `${BASE_URL}${user.user_foto}` : null,
       }));

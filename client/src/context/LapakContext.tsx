@@ -10,13 +10,25 @@ interface Lapak {
   LAPAK_PENYEWA: string | null;
   LAPAK_MULAI: string | null;
   LAPAK_AKHIR: string | null;
-  LAPAK_STATUS: "aktif" | "kosong" | "rusak";
+  LAPAK_STATUS: "aktif" | "kosong" | "rusak" | "tutup";
   LAPAK_OWNER: string;
+  LAPAK_BUKTI_FOTO?: string | null;
+  // Optional: Add types for included models if you access them directly
+  pasar?: { pasar_nama: string };
+  DB_PEDAGANG?: { CUST_CODE: string; CUST_NAMA: string };
+  DB_TYPE_LAPAK?: { TYPE_CODE: string; TYPE_NAMA: string };
 }
 
 interface LapakContextProps {
   lapaks: Lapak[];
-  fetchLapaks: (page: number, limit: number, search: string, statusFilter: string, pasar: string, owner: string) => Promise<void>;
+  fetchLapaks: (
+    page: number,
+    limit: number,
+    search: string,
+    statusFilter: string,
+    pasar: string,
+    owner: string
+  ) => Promise<void>;
   addLapak: (formData: FormData) => Promise<void>;
   editLapak: (LAPAK_CODE: string, formData: FormData) => Promise<void>;
   editStatusLapak: (LAPAK_CODE: string, data: Partial<Lapak>) => Promise<void>;
@@ -25,7 +37,9 @@ interface LapakContextProps {
 
 const LapakContext = createContext<LapakContextProps | undefined>(undefined);
 
-export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [lapaks, setLapaks] = useState<Lapak[]>([]);
 
   const fetchLapaks = async (
@@ -71,7 +85,7 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const res = await api.put(`/lapak/${LAPAK_CODE}/status`, data);
       await fetchLapaks();
-      console.log(res)
+      console.log(res);
     } catch (error) {
       console.error("Failed to edit lapak:", error);
     }
@@ -87,7 +101,16 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   return (
-    <LapakContext.Provider value={{ lapaks, fetchLapaks, addLapak, editLapak, editStatusLapak, deleteLapak }}>
+    <LapakContext.Provider
+      value={{
+        lapaks,
+        fetchLapaks,
+        addLapak,
+        editLapak,
+        editStatusLapak,
+        deleteLapak,
+      }}
+    >
       {children}
     </LapakContext.Provider>
   );

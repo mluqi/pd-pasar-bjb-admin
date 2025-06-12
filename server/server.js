@@ -4,6 +4,8 @@ const cors = require("cors");
 const http = require("http");
 const path = require("path");
 const bodyparser = require("body-parser");
+
+// routes
 const authRoutes = require("./routes/authRoutes");
 const userlevelRoutes = require("./routes/userlevelRoutes");
 const pasarRoutes = require("./routes/pasarRoutes");
@@ -25,6 +27,10 @@ app.use(cors({
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({ extended: true }));
 
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
 //Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/pasar", pasarRoutes);
@@ -40,7 +46,7 @@ app.use("/api", logRoutes);
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => {
   console.log(
     `Server is running on PORT ${PORT}`

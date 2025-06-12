@@ -4,9 +4,9 @@ import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { useEffect, useState } from "react";
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from "../../context/AuthContext";
 
-const BASE_URL = "http://dev2.palindo.id:4000/uploads/";
+const BASE_URL = "http://127.0.0.1/uploads/";
 import api from "../../services/api";
 import FileInput from "../form/input/FileInput";
 
@@ -29,7 +29,7 @@ export default function UserInfoCard() {
       });
     }
   }, [user]);
-  
+
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [newPhoto, setNewPhoto] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -90,9 +90,9 @@ export default function UserInfoCard() {
       setNewPhoto(null);
       setPreviewPhoto(null);
       setUpdateMessage("Profile updated successfully!");
-      
+
       await refreshUser();
-      
+
       closeModal();
     } catch (error) {
       console.error("Error saving changes:", error);

@@ -6,6 +6,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { useEffect, useState } from "react";
+import { Modal } from "../../components/ui/modal";
 import IuranModal from "./IuranModal";
 import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
@@ -32,7 +33,7 @@ const statusOptions = [
 
 const metodeBayarOptions = [
   { value: "", label: "All Metode Bayar" },
-  { value: "cash", label: "Cash" },
+  { value: "tunai", label: "Tunai" },
   { value: "transfer", label: "Transfer" },
   { value: "qris", label: "Qris" },
 ];
@@ -43,16 +44,30 @@ export default function IuranTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedIuran, setSelectedIuran] = useState(null);
-  const [search, setSearch] = useState(""); // State for search input
-  const [statusFilter, setStatusFilter] = useState(""); // State for status filter
-  const [metodeBayarFilter, setMetodeBayarFilter] = useState(""); // State for metode bayar filter
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [metodeBayarFilter, setMetodeBayarFilter] = useState("");
   const [dateRange, setDateRange] = useState<[string | null, string | null]>([
     null,
     null,
   ]);
-  const [page, setPage] = useState(1); // State untuk pagination
-  const [limit, setLimit] = useState(10); // State untuk jumlah data per halaman
-  const [totalPages, setTotalPages] = useState(1); // Total halaman dari API
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null);
+
+  const openPhotoProofModal = (buktiFotoPath: string) => {
+    const serverBaseUrl =
+      import.meta.env.VITE_SERVER_BASE_URL || "https://dev1-p3.palindo.id";
+    setPhotoModalUrl(`${serverBaseUrl}/${buktiFotoPath}`);
+    setIsPhotoModalOpen(true);
+  };
+
+  const closePhotoProofModal = () => {
+    setIsPhotoModalOpen(false);
+    setPhotoModalUrl(null);
+  };
 
   const fetchIuransData = async () => {
     try {
@@ -91,7 +106,6 @@ export default function IuranTable() {
     setIsAddModalOpen(false);
     setSelectedIuran(null);
   };
-  
 
   const handleSaveIuran = async (formData) => {
     try {
@@ -100,7 +114,7 @@ export default function IuranTable() {
       } else {
         await addIuran(formData);
       }
-      await fetchIurans();
+      await fetchIuransData();
       closeModal();
     } catch (error) {
       console.error("Failed to save iuran:", error);
@@ -114,7 +128,7 @@ export default function IuranTable() {
     if (!confirmDelete) return;
     try {
       await deleteIuran(IURAN_CODE);
-      await fetchIurans();
+      await fetchIuransData();
       console.log("Iuran deleted successfully");
     } catch (error) {
       console.error("Failed to delete iuran:", error);
@@ -131,7 +145,7 @@ export default function IuranTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Input
@@ -144,14 +158,14 @@ export default function IuranTable() {
             options={statusOptions}
             placeholder="All Status"
             onChange={(value) => setStatusFilter(value)}
-            defaultValue=""
+            value=""
             className="w-full sm:w-auto"
           />
           <Select
             options={metodeBayarOptions}
             placeholder="All Metode Bayar"
             onChange={(value) => setMetodeBayarFilter(value)}
-            defaultValue=""
+            value=""
             className="w-full sm:w-auto"
           />
           <RangeDatePicker
@@ -278,6 +292,18 @@ export default function IuranTable() {
                   >
                     Delete
                   </button>
+                  {iuran.IURAN_STATUS === "tidak berjualan" &&
+                    iuran.IURAN_BUKTI_FOTO && (
+                      <button
+                        onClick={() =>
+                          openPhotoProofModal(iuran.IURAN_BUKTI_FOTO)
+                        }
+                        className="ml-2 text-blue-500 hover:underline"
+                        title="Lihat Bukti Foto"
+                      >
+                        📷
+                      </button>
+                    )}
                 </TableCell>
               </TableRow>
             ))}
@@ -306,6 +332,37 @@ export default function IuranTable() {
         iuran={isEditModalOpen ? selectedIuran : null}
         onSave={handleSaveIuran}
       />
+
+      {/* Photo Proof Modal */}
+      {isPhotoModalOpen && photoModalUrl && (
+        <Modal
+          isOpen={isPhotoModalOpen}
+          onClose={closePhotoProofModal}
+          className="max-w-lg m-4"
+        >
+          <div className="relative w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+            <h4 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+              Bukti Foto Iuran Tidak Berjualan
+            </h4>
+            <div className="mt-2">
+              <img
+                src={photoModalUrl}
+                alt="Bukti Foto Iuran"
+                className="max-w-full h-auto rounded-md"
+              />
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={closePhotoProofModal}
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

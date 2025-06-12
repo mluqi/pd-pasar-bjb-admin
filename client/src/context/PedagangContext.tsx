@@ -9,6 +9,8 @@ interface Pedagang {
   CUST_OWNER: string;
   CUST_IURAN: string;
   CUST_STATUS: string;
+  pasar?: { pasar_nama: string };
+  lapaks?: { LAPAK_NAMA: string; LAPAK_CODE: string; LAPAK_OWNER: string; }[]; 
 }
 
 interface PedagangContextProps {
@@ -20,14 +22,18 @@ interface PedagangContextProps {
     owner?: string,
     status?: string
   ) => Promise<{ totalPages: number }>;
-  addPedagang: (data: Partial<Pedagang>) => Promise<void>;
+  addPedagang: (pedagangData: Partial<Pedagang>) => Promise<Pedagang | null>;
   editPedagang: (code: string, data: Partial<Pedagang>) => Promise<void>;
   deletePedagang: (code: string) => Promise<void>;
 }
 
-const PedagangContext = createContext<PedagangContextProps | undefined>(undefined);
+const PedagangContext = createContext<PedagangContextProps | undefined>(
+  undefined
+);
 
-export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [pedagangs, setPedagangs] = useState<Pedagang[]>([]);
 
   const fetchPedagangs = async (
@@ -49,13 +55,16 @@ export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const addPedagang = async (data: Partial<Pedagang>) => {
+  const addPedagang = async (
+    pedagangData: Partial<Pedagang>
+  ): Promise<Pedagang | null> => {
     try {
-      const res = await api.post("/pedagang", data);
-      fetchPedagangs();
-      return res.data;
+      const response = await api.post("/pedagang", pedagangData);
+      await fetchPedagangs();
+      return response.data;
     } catch (error) {
       console.error("Failed to add pedagang:", error);
+      throw error;
     }
   };
 
@@ -83,17 +92,26 @@ export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <PedagangContext.Provider
-      value={{ pedagangs, fetchPedagangs, addPedagang, editPedagang, deletePedagang }}
+      value={{
+        pedagangs,
+        fetchPedagangs,
+        addPedagang,
+        editPedagang,
+        deletePedagang,
+      }}
     >
       {children}
     </PedagangContext.Provider>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePedagangContext = () => {
   const context = useContext(PedagangContext);
   if (!context) {
-    throw new Error("usePedagangContext must be used within a PedagangProvider");
+    throw new Error(
+      "usePedagangContext must be used within a PedagangProvider"
+    );
   }
   return context;
 };

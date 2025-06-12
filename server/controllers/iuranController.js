@@ -1,12 +1,27 @@
 const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models");
 const { Op, Sequelize, where } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 const { addLogActivity } = require("./logController");
 
+const deleteFileIfExists = (filePath) => {
+  if (filePath) {
+    const fullPath = path.resolve(filePath);
+    fs.unlink(fullPath, (err) => {
+      if (err && err.code !== "ENOENT") {
+        console.error("Failed to delete old iuran bukti foto:", err);
+      }
+    });
+  }
+};
+
 exports.getAllIuran = async (req, res) => {
+  console.log(req.query)
   const userId = req.user.id;
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
 
+  const pedagangCode = req.query.pedagangCode || "";
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || "";
@@ -15,6 +30,7 @@ exports.getAllIuran = async (req, res) => {
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
   const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
   const offset = (page - 1) * limit;
+
 
   try {
     const whereClause = {
@@ -31,6 +47,7 @@ exports.getAllIuran = async (req, res) => {
         metode ? { IURAN_METODE_BAYAR: metode } : {},
         startDate ? { IURAN_TANGGAL: { [Op.gte]: startDate } } : {},
         endDate ? { IURAN_TANGGAL: { [Op.lte]: endDate } } : {},
+        pedagangCode ? { IURAN_PEDAGANG: pedagangCode } : {},
         userLevel !== "SUA" ? { "$DB_PEDAGANG.CUST_OWNER$": userPasar } : {},
       ],
     };
@@ -57,7 +74,7 @@ exports.getAllIuran = async (req, res) => {
       limit,
       offset,
       order: [["IURAN_TANGGAL", "DESC"]],
-      include: includeClause
+      include: includeClause,
     });
 
     res.status(200).json({
@@ -85,7 +102,7 @@ exports.getIuranByCode = async (req, res) => {
       include: [{ model: DB_PEDAGANG, attributes: ["CUST_CODE", "CUST_NAMA"] }],
     });
     if (!iuran) return res.status(404).json({ message: "Iuran not found" });
-    return res.status(200).res.json(iuran);
+    return res.status(200).json(iuran);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -98,12 +115,10 @@ exports.createIuran = async (req, res) => {
     res.status(401).json({ message: "Unauthorized" });
   }
 
-  // generate unique code example: IU20231001000001 last 5 number is sequence
   const currentDate = new Date();
   const year = currentDate.getFullYear().toString();
   const month = (currentDate.getMonth() + 1).toString().padStart(2, "0");
   const day = currentDate.getDate().toString().padStart(2, "0");
-  // generate code 5 angka trakhir denagn cara cari angka 5 terakhir dan terbesar baru ditambah 1
   const lastIuran = await DB_IURAN.findOne({
     where: {
       IURAN_CODE: {
@@ -143,6 +158,20 @@ exports.createIuran = async (req, res) => {
   const newIuranTanggal = IURAN_TANGGAL ? new Date(IURAN_TANGGAL) : new Date();
   const IURAN_USER = userId;
 
+  let iuranBuktiFotoPath = null;
+  if (req.file) {
+    iuranBuktiFotoPath = req.file.path;
+  }
+
+  if (IURAN_STATUS === "tidak berjualan" && !iuranBuktiFotoPath) {
+    return res.status(400).json({
+      message:
+        "Bukti foto wajib diunggah jika status iuran adalah tidak berjualan.",
+    });
+  }
+
+  const transaction = await DB_IURAN.sequelize.transaction();
+
   try {
     const newIuran = await DB_IURAN.create(
       {
@@ -154,13 +183,51 @@ exports.createIuran = async (req, res) => {
         IURAN_METODE_BAYAR,
         IURAN_WAKTU_BAYAR,
         IURAN_USER,
+        IURAN_BUKTI_FOTO:
+          IURAN_STATUS === "tidak berjualan" ? iuranBuktiFotoPath : null,
       },
       {
+        transaction,
         logging: (query) => {
           req.sqlQuery = query;
         },
       }
     );
+
+    if (
+      newIuran.IURAN_STATUS === "tidak berjualan" &&
+      newIuran.IURAN_BUKTI_FOTO
+    ) {
+      const pedagangCode = newIuran.IURAN_PEDAGANG;
+      if (pedagangCode) {
+        const lapaksToUpdate = await DB_LAPAK.findAll({
+          where: { LAPAK_PENYEWA: pedagangCode },
+          transaction,
+        });
+
+        for (const lapak of lapaksToUpdate) {
+          const oldLapakPhotoPath = lapak.LAPAK_BUKTI_FOTO;
+          await DB_LAPAK.update(
+            {
+              LAPAK_STATUS: "tutup",
+              LAPAK_BUKTI_FOTO: newIuran.IURAN_BUKTI_FOTO,
+            },
+            {
+              where: { LAPAK_CODE: lapak.LAPAK_CODE },
+              transaction,
+            }
+          );
+          if (
+            oldLapakPhotoPath &&
+            oldLapakPhotoPath !== newIuran.IURAN_BUKTI_FOTO
+          ) {
+            deleteFileIfExists(oldLapakPhotoPath);
+          }
+        }
+      }
+    }
+
+    await transaction.commit();
 
     const logSource = {
       user: req.user,
@@ -177,6 +244,7 @@ exports.createIuran = async (req, res) => {
     });
     return res.status(201).json(newIuran);
   } catch (error) {
+    await transaction.rollback();
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
@@ -189,13 +257,23 @@ exports.createIuran = async (req, res) => {
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "create",
     });
+    console.log(error);
     return res.status(400).json({ error: error.message });
   }
 };
 
 exports.updateIuran = async (req, res) => {
+  const transaction = await DB_IURAN.sequelize.transaction();
   try {
     const userId = req.user.id;
+    const iuranCode = req.params.code;
+
+    const currentIuran = await DB_IURAN.findByPk(iuranCode);
+    if (!currentIuran) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Iuran not found" });
+    }
+    const oldPhotoPath = currentIuran.IURAN_BUKTI_FOTO;
 
     let waktuBayar = req.body.IURAN_WAKTU_BAYAR;
     if (waktuBayar) {
@@ -209,6 +287,7 @@ exports.updateIuran = async (req, res) => {
         parsedDate.setMilliseconds(currentTime.getMilliseconds());
         waktuBayar = parsedDate.toISOString();
       } else {
+        await transaction.rollback();
         return res.status(400).json({ message: "Invalid date format" });
       }
     }
@@ -219,16 +298,81 @@ exports.updateIuran = async (req, res) => {
       IURAN_USER: userId,
     };
 
+    if (req.file) {
+      updateData.IURAN_BUKTI_FOTO = req.file.path;
+    } else if (
+      updateData.hasOwnProperty("IURAN_BUKTI_FOTO") &&
+      (updateData.IURAN_BUKTI_FOTO === "" ||
+        updateData.IURAN_BUKTI_FOTO === null)
+    ) {
+      updateData.IURAN_BUKTI_FOTO = null;
+    } else if (!updateData.hasOwnProperty("IURAN_BUKTI_FOTO")) {
+      updateData.IURAN_BUKTI_FOTO = oldPhotoPath;
+    }
+
+    const finalStatus = updateData.IURAN_STATUS || currentIuran.IURAN_STATUS;
+
+    if (finalStatus === "tidak berjualan") {
+      if (!updateData.IURAN_BUKTI_FOTO) {
+        await transaction.rollback();
+        return res.status(400).json({
+          message:
+            "Bukti foto wajib ada jika status iuran adalah tidak berjualan.",
+        });
+      }
+    } else {
+      updateData.IURAN_BUKTI_FOTO = null;
+    }
+
     const [updated] = await DB_IURAN.update(updateData, {
-      where: { IURAN_CODE: req.params.code },
+      where: { IURAN_CODE: iuranCode },
+      transaction,
       logging: (query) => {
         req.sqlQuery = query;
       },
     });
 
     if (!updated) {
-      res.status(404).json({ message: "Iuran not found" });
+      await transaction.rollback();
+      return res.status(404).json({ message: "Iuran not found during update" });
     }
+
+    // If Iuran status is "tidak berjualan", update associated Lapaks
+    if (finalStatus === "tidak berjualan" && updateData.IURAN_BUKTI_FOTO) {
+      const pedagangCode = currentIuran.IURAN_PEDAGANG;
+      if (pedagangCode) {
+        const lapaksToUpdate = await DB_LAPAK.findAll({
+          where: { LAPAK_PENYEWA: pedagangCode },
+          transaction,
+        });
+
+        for (const lapak of lapaksToUpdate) {
+          const oldLapakPhotoPath = lapak.LAPAK_BUKTI_FOTO;
+          await DB_LAPAK.update(
+            {
+              LAPAK_STATUS: "tutup",
+              LAPAK_BUKTI_FOTO: updateData.IURAN_BUKTI_FOTO, // Use the same photo as Iuran
+            },
+            {
+              where: { LAPAK_CODE: lapak.LAPAK_CODE },
+              transaction,
+            }
+          );
+          if (
+            oldLapakPhotoPath &&
+            oldLapakPhotoPath !== updateData.IURAN_BUKTI_FOTO
+          ) {
+            deleteFileIfExists(oldLapakPhotoPath);
+          }
+        }
+      }
+    }
+
+    if (oldPhotoPath && oldPhotoPath !== updateData.IURAN_BUKTI_FOTO) {
+      deleteFileIfExists(oldPhotoPath);
+    }
+
+    await transaction.commit();
 
     const updatedIuran = await DB_IURAN.findOne({
       where: { IURAN_CODE: req.params.code },
@@ -241,21 +385,24 @@ exports.updateIuran = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.pasar_code,
+      LOG_TARGET: iuranCode,
       LOG_DETAIL: "success",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
+
     return res.status(201).json(updatedIuran);
   } catch (error) {
+    await transaction.rollback();
+    console.error("Error updating iuran:", error);
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
     };
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.pasar_code,
+      LOG_TARGET: req.params.code,
       LOG_DETAIL: "failed",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
@@ -266,18 +413,24 @@ exports.updateIuran = async (req, res) => {
 };
 
 exports.deleteIuran = async (req, res) => {
+  const transaction = await DB_IURAN.sequelize.transaction();
   try {
+    const iuranCode = req.params.code;
+    const iuranToDelete = await DB_IURAN.findByPk(iuranCode);
+
+    if (!iuranToDelete) {
+      return res.status(404).json({ message: "Iuran not found" });
+    }
+    const photoPathToDelete = iuranToDelete.IURAN_BUKTI_FOTO;
+
     const deleted = await DB_IURAN.destroy({
-      where: { IURAN_CODE: req.params.code },
+      where: { IURAN_CODE: iuranCode },
+      transaction,
       logging: (query) => {
         req.sqlQuery = query;
       },
     });
 
-    if (!deleted) {
-      res.status(404).json({ message: "Iuran not found" });
-    }
-
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
@@ -285,21 +438,29 @@ exports.deleteIuran = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: iuranCode,
       LOG_DETAIL: "success",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "delete",
     });
+
+    if (photoPathToDelete) {
+      deleteFileIfExists(photoPathToDelete);
+    }
+
+    await transaction.commit();
     return res.status(200).json({ message: "Iuran deleted" });
   } catch (error) {
+    await transaction.rollback();
+    console.error("Error deleting iuran:", error);
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
     };
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: iuranCode,
       LOG_DETAIL: "failed",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
@@ -551,7 +712,7 @@ exports.getDataTunai = async (req, res) => {
     const whereClause = {
       [Op.and]: [
         userLevel !== "SUA" ? { "$DB_PEDAGANG.CUST_OWNER$": userPasar } : {},
-        { IURAN_METODE_BAYAR: "cash" },
+        { IURAN_METODE_BAYAR: "tunai" },
         { IURAN_STATUS: "paid" },
         startDate ? { IURAN_WAKTU_BAYAR: { [Op.gte]: startDate } } : {},
         endDate ? { IURAN_WAKTU_BAYAR: { [Op.lte]: endDate } } : {},
@@ -660,7 +821,7 @@ exports.getDailyTransactionStats = async (req, res) => {
     transactions.forEach((t) => {
       const dateString = t.day;
       if (statsByDate[dateString]) {
-        if (t.IURAN_METODE_BAYAR === "cash") {
+        if (t.IURAN_METODE_BAYAR === "tunai") {
           statsByDate[dateString].tunai += parseFloat(t.total_amount);
         } else if (["transfer", "qris"].includes(t.IURAN_METODE_BAYAR)) {
           statsByDate[dateString].nonTunai += parseFloat(t.total_amount);

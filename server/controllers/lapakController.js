@@ -6,6 +6,8 @@ const {
   DB_IURAN,
 } = require("../models");
 const { Op, where } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 const { addLogActivity } = require("./logController");
 
 exports.getAllLapak = async (req, res) => {
@@ -71,20 +73,33 @@ exports.getAllLapakWithoutPagination = async (req, res) => {
   const userId = req.user.id;
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
+  const forPedagangCode = req.query.pedagangCode || null; // Parameter untuk pedagang spesifik
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
-    const whereClause = {
-      LAPAK_STATUS: "kosong",
-      ...(userLevel !== "SUA" && { LAPAK_OWNER: userPasar }),
-    };
+    const whereConditions = [];
+    if (userLevel !== "SUA") {
+      whereConditions.push({ LAPAK_OWNER: userPasar });
+    }
+
+    if (forPedagangCode) {
+      whereConditions.push({
+        [Op.or]: [
+          { LAPAK_STATUS: "kosong" },
+          { LAPAK_PENYEWA: forPedagangCode },
+        ]
+      });
+    } else {
+      // Jika menambah baru, hanya tampilkan lapak kosong
+      whereConditions.push({ LAPAK_STATUS: "kosong" });
+    }
 
     const lapaks = await DB_LAPAK.findAll({
-      where: whereClause,
-      attributes: ["LAPAK_CODE", "LAPAK_NAMA"],
+      where: { [Op.and]: whereConditions },
+      attributes: ["LAPAK_CODE", "LAPAK_NAMA", "LAPAK_OWNER"],
       order: [["LAPAK_NAMA", "ASC"]],
     });
 
@@ -121,7 +136,7 @@ exports.getLapakByCode = async (req, res) => {
             {
               model: DB_IURAN,
               as: "iurans",
-              where: { IURAN_STATUS: "pending" },
+              where: { IURAN_STATUS: ["pending", "tidak berjualan"] },
               required: false,
             },
           ],
@@ -157,8 +172,17 @@ exports.createLapak = async (req, res) => {
     res.status(400).json({ message: "Request body is empty or invalid" });
   }
 
-  const { LAPAK_NAMA, LAPAK_BLOK, LAPAK_UKURAN, LAPAK_TYPE, LAPAK_STATUS } =
-    req.body;
+  const {
+    LAPAK_NAMA,
+    LAPAK_BLOK,
+    LAPAK_UKURAN,
+    LAPAK_TYPE,
+    LAPAK_STATUS,
+    LAPAK_PENYEWA,
+    LAPAK_MULAI,
+    LAPAK_AKHIR,
+  } = req.body;
+
   if (
     !LAPAK_NAMA ||
     !LAPAK_BLOK ||
@@ -166,12 +190,9 @@ exports.createLapak = async (req, res) => {
     !LAPAK_TYPE ||
     !LAPAK_STATUS
   ) {
-    res.status(400).json({ message: "All fields are required" });
+    return res.status(400).json({ message: "All fields are required" });
   }
   const LAPAK_OWNER = pasarCode;
-  const LAPAK_MULAI = req.body.LAPAK_MULAI || null;
-  const LAPAK_AKHIR = req.body.LAPAK_AKHIR || null;
-  const LAPAK_PENYEWA = req.body.LAPAK_PENYEWA || "";
 
   const existingLapak = await DB_LAPAK.findOne({
     where: { LAPAK_NAMA, LAPAK_BLOK, LAPAK_UKURAN, LAPAK_TYPE },
@@ -200,6 +221,19 @@ exports.createLapak = async (req, res) => {
     res.status(400).json({ message: "Lapak code already exists" });
   }
 
+  let lapakBuktiFotoPath = null;
+  if (req.file) {
+    lapakBuktiFotoPath = req.file.path;
+  }
+
+  if (LAPAK_STATUS === "tutup" && !lapakBuktiFotoPath) {
+    return res
+      .status(400)
+      .json({
+        message: "Bukti foto wajib diunggah jika status lapak adalah tutup.",
+      });
+  }
+
   try {
     const newLapak = await DB_LAPAK.create(
       {
@@ -208,11 +242,12 @@ exports.createLapak = async (req, res) => {
         LAPAK_BLOK,
         LAPAK_UKURAN,
         LAPAK_TYPE,
-        LAPAK_PENYEWA,
-        LAPAK_MULAI,
-        LAPAK_AKHIR,
+        LAPAK_PENYEWA: LAPAK_PENYEWA === "" ? null : LAPAK_PENYEWA,
+        LAPAK_MULAI: LAPAK_MULAI === "" ? null : LAPAK_MULAI,
+        LAPAK_AKHIR: LAPAK_AKHIR === "" ? null : LAPAK_AKHIR,
         LAPAK_STATUS,
         LAPAK_OWNER,
+        LAPAK_BUKTI_FOTO: LAPAK_STATUS === "tutup" ? lapakBuktiFotoPath : null,
       },
       {
         logging: (query) => {
@@ -252,21 +287,88 @@ exports.createLapak = async (req, res) => {
   }
 };
 
+const deleteFileIfExists = (filePath) => {
+  if (filePath) {
+    const fullPath = path.resolve(filePath); // Ensure absolute path
+    fs.unlink(fullPath, (err) => {
+      if (err && err.code !== "ENOENT") {
+        // ENOENT means file not found, which is fine
+        console.error("Failed to delete old bukti foto:", err);
+      }
+    });
+  }
+};
+
 exports.updateLapak = async (req, res) => {
   try {
-    const [updated] = await DB_LAPAK.update(req.body, {
-      where: { LAPAK_CODE: req.params.code },
+    const lapakCode = req.params.code;
+    const currentLapak = await DB_LAPAK.findByPk(lapakCode);
+
+    if (!currentLapak) {
+      return res.status(404).json({ message: "Lapak not found" });
+    }
+
+    const updatePayload = { ...req.body };
+    const oldPhotoPath = currentLapak.LAPAK_BUKTI_FOTO;
+
+    // Handle file upload
+    if (req.file) {
+      updatePayload.LAPAK_BUKTI_FOTO = req.file.path;
+    }
+
+    const finalStatus = updatePayload.LAPAK_STATUS || currentLapak.LAPAK_STATUS;
+    let finalBuktiFoto = updatePayload.LAPAK_BUKTI_FOTO; // Path of new file if uploaded
+
+    if (!req.file) {
+      if (
+        updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") &&
+        updatePayload.LAPAK_BUKTI_FOTO === null
+      ) {
+        finalBuktiFoto = null; 
+      } else if (
+        updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") &&
+        updatePayload.LAPAK_BUKTI_FOTO === ""
+      ) {
+        // Sent as empty string from frontend
+        finalBuktiFoto = null; 
+      } else if (
+        !updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") ||
+        updatePayload.LAPAK_BUKTI_FOTO === undefined
+      ) {
+        finalBuktiFoto = currentLapak.LAPAK_BUKTI_FOTO; // Keep existing if not in payload
+      }
+    }
+
+    if (finalStatus === "tutup") {
+      if (!finalBuktiFoto) {
+        return res
+          .status(400)
+          .json({
+            message: "Bukti foto wajib ada jika status lapak adalah tutup.",
+          });
+      }
+      updatePayload.LAPAK_BUKTI_FOTO = finalBuktiFoto;
+    } else {
+      updatePayload.LAPAK_BUKTI_FOTO = null; // Clear photo if status is not "tutup"
+    }
+
+    ["LAPAK_PENYEWA", "LAPAK_MULAI", "LAPAK_AKHIR"].forEach((key) => {
+      if (updatePayload.hasOwnProperty(key) && updatePayload[key] === "") {
+        updatePayload[key] = null;
+      }
+    });
+
+    const [updated] = await DB_LAPAK.update(updatePayload, {
+      where: { LAPAK_CODE: lapakCode },
       logging: (query) => {
         req.sqlQuery = query;
       },
     });
-    if (!updated) {
-      res.status(404).json({ message: "Lapak not found" });
-    }
 
-    const updatedLapak = await DB_LAPAK.findOne({
-      where: { LAPAK_CODE: req.params.code },
-    });
+    // Delete old photo if it's different from the new one or if it's being cleared
+    if (oldPhotoPath && oldPhotoPath !== updatePayload.LAPAK_BUKTI_FOTO) {
+      deleteFileIfExists(oldPhotoPath);
+    }
 
     const logSource = {
       user: req.user,
@@ -281,8 +383,17 @@ exports.updateLapak = async (req, res) => {
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
+
+    const updatedLapak = await DB_LAPAK.findOne({
+      // Fetch the updated record to return
+      where: { LAPAK_CODE: lapakCode },
+    });
+
     return res.status(200).json(updatedLapak);
   } catch (error) {
+    // Log the full error for better debugging on the server
+    console.error("Error in updateLapak:", error);
+
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
@@ -295,43 +406,80 @@ exports.updateLapak = async (req, res) => {
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
-    return res.status(400).json({ error: error.message });
+    // Return a 500 status for internal server errors
+    return res.status(500).json({
+      message: "Internal server error while updating lapak.",
+      error: error.message || "Unknown error", // Provide a fallback for error message
+    });
   }
 };
 
 exports.updateLapakStatus = async (req, res) => {
   const { LAPAK_STATUS, LAPAK_PENYEWA, LAPAK_MULAI, LAPAK_AKHIR } = req.body;
+  const lapakCode = req.params.code;
+  let buktiFotoPath = null;
+
+  if (req.file) {
+    buktiFotoPath = req.file.path;
+  }
+
+  const currentLapak = await DB_LAPAK.findByPk(lapakCode);
+  if (!currentLapak)
+    return res.status(404).json({ message: "Lapak not found" });
+  const oldPhotoPath = currentLapak.LAPAK_BUKTI_FOTO;
 
   try {
     const pedagang = await DB_PEDAGANG.findOne({
-      where: { CUST_NAMA: LAPAK_PENYEWA },
+      where: { CUST_CODE: LAPAK_PENYEWA },
     });
 
     if (!pedagang) {
-      res.status(404).json({ message: "Pedagang not found" });
+      return res.status(400).json({
+        message: "Pedagang not found. Please provide a valid Pedagang name.",
+      });
     }
 
-    const [updated] = await DB_LAPAK.update(
-      {
-        LAPAK_STATUS,
-        LAPAK_PENYEWA: pedagang.CUST_CODE,
-        LAPAK_MULAI,
-        LAPAK_AKHIR,
-      },
-      {
-        where: { LAPAK_CODE: req.params.code },
-        logging: (query) => {
-          req.sqlQuery = query;
-        },
+    if (LAPAK_STATUS === "tutup" && !buktiFotoPath && !oldPhotoPath) {
+      return res.status(400).json({
+        message:
+          "Bukti foto wajib diupload jika status lapak ingin diubah menjadi tutup.",
+      });
+    }
+
+    const updateData = {
+      LAPAK_STATUS,
+      LAPAK_PENYEWA: pedagang.CUST_CODE,
+      LAPAK_MULAI,
+      LAPAK_AKHIR,
+    };
+
+    if (LAPAK_STATUS === "tutup") {
+      if (buktiFotoPath) {
+        updateData.LAPAK_BUKTI_FOTO = buktiFotoPath;
+      } else if (oldPhotoPath) {
+        updateData.LAPAK_BUKTI_FOTO = oldPhotoPath;
       }
-    );
+    } else {
+      updateData.LAPAK_BUKTI_FOTO = null;
+    }
+
+    const [updated] = await DB_LAPAK.update(updateData, {
+      where: { LAPAK_CODE: lapakCode },
+      logging: (query) => {
+        req.sqlQuery = query;
+      },
+    });
 
     if (!updated) {
       res.status(404).json({ message: "Lapak not found" });
     }
 
+    if (oldPhotoPath && oldPhotoPath !== updateData.LAPAK_BUKTI_FOTO) {
+      deleteFileIfExists(oldPhotoPath);
+    }
+
     const updatedLapak = await DB_LAPAK.findOne({
-      where: { LAPAK_CODE: req.params.code },
+      where: { LAPAK_CODE: lapakCode },
     });
 
     const logSource = {
@@ -343,11 +491,13 @@ exports.updateLapakStatus = async (req, res) => {
       LOG_USER: req.user.id,
       LOG_TARGET: pedagang.CUST_CODE,
       LOG_DETAIL: "success",
-      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"),
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
+
     return res.status(201).json(updatedLapak);
+    
   } catch (error) {
     const logSource = {
       user: req.user,
@@ -357,18 +507,27 @@ exports.updateLapakStatus = async (req, res) => {
       LOG_USER: req.user.id,
       LOG_TARGET: req.params.code,
       LOG_DETAIL: "failed",
-      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
+      LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"),
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
+    console.log(error)
     res.status(500).json({ error: error.message });
   }
 };
 
 exports.deleteLapak = async (req, res) => {
   try {
+    const lapakCode = req.params.code;
+    const lapakToDelete = await DB_LAPAK.findByPk(lapakCode);
+
+    if (!lapakToDelete) {
+      res.status(404).json({ message: "Lapak not found" });
+    }
+    const photoPathToDelete = lapakToDelete.LAPAK_BUKTI_FOTO;
+
     const deleted = await DB_LAPAK.destroy({
-      where: { LAPAK_CODE: req.params.code },
+      where: { LAPAK_CODE: lapakCode },
       logging: (query) => {
         req.sqlQuery = query;
       },
@@ -385,12 +544,17 @@ exports.deleteLapak = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: lapakCode,
       LOG_DETAIL: "success",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "delete",
     });
+
+    if (photoPathToDelete) {
+      deleteFileIfExists(photoPathToDelete);
+    }
+
     return res.status(200).json({ message: "Lapak deleted" });
   } catch (error) {
     const logSource = {
@@ -399,7 +563,7 @@ exports.deleteLapak = async (req, res) => {
     };
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: lapakCode,
       LOG_DETAIL: "failed",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"), // Data dari params
       LOG_OWNER: req.user.owner,

@@ -14,7 +14,6 @@ import Input from "../../components/form/input/InputField";
 import { usePedagangContext } from "../../context/PedagangContext";
 import { useDropdownContext } from "../../context/DropdownContext";
 import Badge from "../../components/ui/badge/Badge";
-import { useLapakContext } from "../../context/LapakContext";
 
 const limitOptions = [
   { value: "10", label: "10 per page" },
@@ -37,6 +36,13 @@ interface Pedagang {
   CUST_OWNER: string;
   CUST_IURAN: string;
   CUST_STATUS: string;
+  pasar?: { pasar_nama: string };
+  lapaks?: Array<{
+    LAPAK_NAMA: string;
+    LAPAK_CODE: string;
+    LAPAK_MULAI?: string | null;
+    LAPAK_AKHIR?: string | null;
+  }>;
 }
 
 export default function PedagangTable() {
@@ -51,22 +57,23 @@ export default function PedagangTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedPedagang, setSelectedPedagang] = useState(null);
-  const [search, setSearch] = useState(""); // State for search input
-  const [owner, setOwner] = useState(""); // State for owner filter
-  const [status, setStatus] = useState(""); // State for status filter
-  const [page, setPage] = useState(1); // State for pagination
-  const [limit, setLimit] = useState(10); // State for limit
-  const [totalPages, setTotalPages] = useState(1); // Total pages from API
+  const [search, setSearch] = useState("");
+  const [owner, setOwner] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const { pasars, fetchAllPasars } = useDropdownContext();
-  const { editStatusLapak } = useLapakContext();
+  const { pasars, fetchAllPasars, fetchAllLapaks } = useDropdownContext();
 
   useEffect(() => {
     fetchAllPasars();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchPedagangsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, search, owner, status]);
 
   const fetchPedagangsData = async () => {
@@ -94,40 +101,18 @@ export default function PedagangTable() {
     setSelectedPedagang(null);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSavePedagang = async (formData: any) => {
-    const { selectedLapaks, lapakMulai, lapakAkhir, ...pedagangData } =
-      formData;
-
     try {
-      if (selectedPedagang) {
-        // Update pedagang
-        await editPedagang(selectedPedagang.CUST_CODE, pedagangData);
-
-        // Update status lapak secara looping
-        if (selectedLapaks && selectedLapaks.length > 0) {
-          for (const lapakCode of selectedLapaks) {
-            await editStatusLapak(lapakCode, {
-              LAPAK_STATUS: "aktif",
-              LAPAK_PENYEWA: pedagangData.CUST_NAMA,
-              LAPAK_MULAI: lapakMulai,
-              LAPAK_AKHIR: lapakAkhir,
-            });
-          }
-        }
+      if (selectedPedagang && selectedPedagang.CUST_CODE) {
+        await editPedagang(selectedPedagang.CUST_CODE, formData);
       } else {
-        // Add pedagang
-        const newPedagang = await addPedagang(pedagangData);
-
-        // Update status lapak secara looping
-        if (selectedLapaks && selectedLapaks.length > 0) {
-          for (const lapakCode of selectedLapaks) {
-            await editStatusLapak(lapakCode, {
-              LAPAK_STATUS: "aktif",
-              LAPAK_PENYEWA: newPedagang.CUST_NAMA,
-              LAPAK_MULAI: lapakMulai,
-              LAPAK_AKHIR: lapakAkhir,
-            });
-          }
+        const newPedagang = await addPedagang(formData);
+        if (!newPedagang || !newPedagang.CUST_CODE) {
+          console.error(
+            "Gagal menambahkan pedagang atau mendapatkan CUST_CODE."
+          );
+          return;
         }
       }
 
@@ -135,6 +120,11 @@ export default function PedagangTable() {
       fetchPedagangsData();
     } catch (error) {
       console.error("Failed to save pedagang:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Terjadi kesalahan saat menyimpan data pedagang.";
+      alert(errorMessage);
     }
   };
 
@@ -162,7 +152,7 @@ export default function PedagangTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Input
@@ -174,7 +164,7 @@ export default function PedagangTable() {
           <Select
             options={statusOptions}
             onChange={(value) => setStatus(value)}
-            defaultValue=""
+            value=""
             placeholder="All Status"
             className="w-full sm:w-auto"
           />
@@ -188,7 +178,7 @@ export default function PedagangTable() {
             ]}
             placeholder="All Pasars"
             onChange={(value) => setOwner(value)}
-            defaultValue={owner}
+            value={owner}
             className="w-full sm:w-auto"
           />
         </div>

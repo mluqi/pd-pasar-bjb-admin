@@ -17,6 +17,17 @@ interface Pedagang {
   CUST_OWNER: string;
   CUST_IURAN: string;
   CUST_STATUS: string;
+  lapaks?: Array<{
+    LAPAK_CODE: string;
+    LAPAK_NAMA: string;
+    LAPAK_MULAI?: string | null;
+    LAPAK_AKHIR?: string | null;
+    LAPAK_OWNER: string;
+    pasar?: {
+      pasar_code: string;
+      pasar_nama: string;
+    };
+  }>;
 }
 
 const statusOptions = [
@@ -28,7 +39,7 @@ interface PedagangModalProps {
   isOpen: boolean;
   onClose: () => void;
   pedagang: Pedagang | null;
-  onSave: (data: Partial<Pedagang>) => void;
+  onSave: (data: any) => void;
 }
 
 const PedagangModal: React.FC<PedagangModalProps> = ({
@@ -43,12 +54,11 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
     CUST_PHONE: "",
     CUST_OWNER: "",
     CUST_IURAN: "",
-    CUST_STATUS: "",
+    CUST_STATUS: "aktif", // Default for new pedagang
   });
 
   useEffect(() => {
     if (pedagang) {
-      console.log(pedagang);
       setForm({
         CUST_NAMA: pedagang.CUST_NAMA || "",
         CUST_NIK: pedagang.CUST_NIK || "",
@@ -59,9 +69,17 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
       });
       setSelectedLapaks(
         pedagang.lapaks?.map((lapak) => lapak.LAPAK_CODE) || []
-      ); // Set default lapaks
-      setLapakMulai(pedagang.lapaks?.map((lapak) => lapak.LAPAK_MULAI) || null);
-      setLapakAkhir(pedagang.lapaks?.map((lapak) => lapak.LAPAK_AKHIR) || null);
+      );
+      setLapakMulai(
+        pedagang.lapaks && pedagang.lapaks.length > 0
+          ? pedagang.lapaks[0].LAPAK_MULAI || null
+          : null
+      );
+      setLapakAkhir(
+        pedagang.lapaks && pedagang.lapaks.length > 0
+          ? pedagang.lapaks[0].LAPAK_AKHIR || null
+          : null
+      );
     } else {
       setForm({
         CUST_NAMA: "",
@@ -69,7 +87,7 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
         CUST_PHONE: "",
         CUST_OWNER: "",
         CUST_IURAN: "",
-        CUST_STATUS: "",
+        CUST_STATUS: "aktif",
       });
       setSelectedLapaks([]);
       setLapakMulai(null);
@@ -77,18 +95,27 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
     }
   }, [pedagang]);
 
-  const [selectedLapaks, setSelectedLapaks] = useState<string[]>([]); // State untuk MultiSelect
-  const [lapakMulai, setLapakMulai] = useState<string | null>(null); // State untuk LAPAK_MULAI
-  const [lapakAkhir, setLapakAkhir] = useState<string | null>(null); // State untuk LAPAK_AKHIR
+  const [selectedLapaks, setSelectedLapaks] = useState<string[]>([]);
+  const [lapakMulai, setLapakMulai] = useState<string | null>(null);
+  const [lapakAkhir, setLapakAkhir] = useState<string | null>(null);
 
   const { lapaks, pasars, fetchAllLapaks, fetchAllPasars } =
     useDropdownContext();
   // const { lapaks, fetchLapaks } = useLapakContext();
 
+  // useEffect(() => {
+  //   fetchAllPasars();
+  //   fetchAllLapaks();
+  // // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // Initial fetch, will be overridden by below useEffect when modal opens
+
   useEffect(() => {
-    fetchAllPasars();
-    fetchAllLapaks();
-  }, []);
+    if (isOpen) {
+      fetchAllPasars(); // Anda mungkin ingin memanggil ini lebih jarang jika daftar pasar tidak sering berubah
+      const currentPedagangCode = pedagang ? pedagang.CUST_CODE : undefined;
+      fetchAllLapaks(currentPedagangCode);
+    }
+  }, [isOpen, pedagang]); // Pastikan fetchAllLapaks & fetchAllPasars stabil (useCallback di context)
 
   // const handleSelectChangeLapak = (value: string) => {
   //   setSelectedLapak(value);
@@ -198,7 +225,7 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
               label="Select Lapaks"
               options={(lapaks || []).map((lapak) => ({
                 value: lapak.LAPAK_CODE,
-                text: `${lapak.LAPAK_NAMA}`,
+                text: `${lapak.LAPAK_NAMA} - ${lapak.LAPAK_OWNER_NAME}`,
               }))}
               defaultSelected={selectedLapaks}
               onChange={(selected) => setSelectedLapaks(selected)}

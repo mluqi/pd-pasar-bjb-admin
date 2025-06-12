@@ -6,6 +6,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { useEffect, useState } from "react";
+import { Modal } from "../../components/ui/modal"; // Import Modal component
 import LapakModal from "./LapakModal";
 import Badge from "../../components/ui/badge/Badge";
 import Button from "../../components/ui/button/Button";
@@ -28,6 +29,7 @@ const statusOptions = [
   { value: "aktif", label: "Paid" },
   { value: "kosong", label: "Pending" },
   { value: "rusak", label: "Rusak" },
+  { value: "tutup", label: "Tutup" },
 ];
 
 export default function LapakTable() {
@@ -43,6 +45,10 @@ export default function LapakTable() {
   const [page, setPage] = useState(1); // State untuk pagination
   const [limit, setLimit] = useState(10); // State untuk jumlah data per halaman
   const [totalPages, setTotalPages] = useState(1); // Total halaman dari API
+
+  // State for photo proof modal
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null);
 
   const fetchLapaksData = async () => {
     try {
@@ -86,6 +92,18 @@ export default function LapakTable() {
     setIsEditModalOpen(false);
     setIsAddModalOpen(false);
     setSelectedLapak(null);
+  };
+
+  const openPhotoProofModal = (buktiFotoPath: string) => {
+    const serverBaseUrl =
+      import.meta.env.VITE_SERVER_BASE_URL || "https://dev1-p3.palindo.id";
+    setPhotoModalUrl(`${serverBaseUrl}/${buktiFotoPath}`);
+    setIsPhotoModalOpen(true);
+  };
+
+  const closePhotoProofModal = () => {
+    setIsPhotoModalOpen(false);
+    setPhotoModalUrl(null);
   };
 
   const handleSaveLapak = async (formData) => {
@@ -278,6 +296,17 @@ export default function LapakTable() {
                   >
                     Delete
                   </button>
+                  {lapak.LAPAK_STATUS === "tutup" && lapak.LAPAK_BUKTI_FOTO && (
+                    <button
+                      onClick={() =>
+                        openPhotoProofModal(lapak.LAPAK_BUKTI_FOTO)
+                      }
+                      className="ml-2 text-blue-500 hover:underline"
+                      title="Lihat Bukti Foto"
+                    >
+                      📷 {/* Icon for viewing photo */}
+                    </button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -306,6 +335,37 @@ export default function LapakTable() {
         lapak={isEditModalOpen ? selectedLapak : null}
         onSave={handleSaveLapak}
       />
+
+      {/* Photo Proof Modal */}
+      {isPhotoModalOpen && photoModalUrl && (
+        <Modal
+          isOpen={isPhotoModalOpen}
+          onClose={closePhotoProofModal}
+          className="max-w-lg m-4"
+        >
+          <div className="relative w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8">
+            <h4 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+              Bukti Foto Lapak Tutup
+            </h4>
+            <div className="mt-2">
+              <img
+                src={photoModalUrl}
+                alt="Bukti Foto"
+                className="max-w-full h-auto rounded-md"
+              />
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={closePhotoProofModal}
+              >
+                Tutup
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

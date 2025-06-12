@@ -92,16 +92,24 @@ exports.getAllPedagangWithoutPagination = async (req, res) => {
   const userId = req.user.id;
   const userlevel = req.user.level;
   const userPasar = req.user.owner;
+  const status = req.query.status || "";
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
   try {
-    const whereClause = userlevel !== "SUA" ? { CUST_OWNER: userPasar } : {};
+    const whereClause = {};
+    if (userlevel !== "SUA") {
+      whereClause.CUST_OWNER = userPasar;
+    }
+
+    if (status) {
+      whereClause.CUST_STATUS = status;
+    }
 
     const pedagangs = await DB_PEDAGANG.findAll({
-      attributes: ["CUST_CODE", "CUST_NAMA"],
+      attributes: ["CUST_CODE", "CUST_NAMA", "CUST_STATUS"],
       where: whereClause,
       order: [["CUST_NAMA", "ASC"]],
     });
@@ -143,7 +151,7 @@ exports.getPedagangById = async (req, res) => {
       where: { IURAN_PEDAGANG: req.params.code },
       limit: iuranLimit,
       offset: iuranOffset,
-      order: [["IURAN_TANGGAL", "DESC"]]
+      order: [["IURAN_TANGGAL", "DESC"]],
     });
 
     res.json({
@@ -155,7 +163,6 @@ exports.getPedagangById = async (req, res) => {
         totalPages: Math.ceil(iuranData.count / iuranLimit),
       },
     });
-    
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -200,11 +207,10 @@ exports.createPedagang = async (req, res) => {
       return res.status(400).json({ message: "Pedagang already exists" });
     }
 
-    // Ambil kode terakhir dengan lock
     const lastPedagang = await DB_PEDAGANG.findOne({
       order: [["CUST_CODE", "DESC"]],
       transaction,
-      lock: transaction.LOCK.UPDATE, // Kunci row terakhir
+      lock: transaction.LOCK.UPDATE,
     });
 
     const lastCode = lastPedagang ? lastPedagang.CUST_CODE : "CUST00000";
@@ -229,6 +235,26 @@ exports.createPedagang = async (req, res) => {
         },
       }
     );
+
+    const { selectedLapaks, lapakMulai, lapakAkhir } = req.body;
+    if (
+      selectedLapaks &&
+      Array.isArray(selectedLapaks) &&
+      selectedLapaks.length > 0
+    ) {
+      await DB_LAPAK.update(
+        {
+          LAPAK_PENYEWA: CUST_CODE,
+          LAPAK_MULAI: lapakMulai,
+          LAPAK_AKHIR: lapakAkhir,
+          LAPAK_STATUS: "aktif",
+        },
+        {
+          where: { LAPAK_CODE: selectedLapaks },
+          transaction,
+        }
+      );
+    }
 
     await transaction.commit();
 
@@ -273,20 +299,107 @@ exports.updatePedagang = async (req, res) => {
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
   }
+  const pedagangCode = req.params.code;
+  const { CUST_STATUS, ...otherData } = req.body;
+
+  const transaction = await DB_PEDAGANG.sequelize.transaction();
+
   try {
+    const pedagang = await DB_PEDAGANG.findOne({
+      where: { CUST_CODE: pedagangCode },
+      transaction,
+    });
+
+    if (!pedagang) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Pedagang not found" });
+    }
+
+    const previousStatus = pedagang.CUST_STATUS;
+
     const [updated] = await DB_PEDAGANG.update(req.body, {
-      where: { CUST_CODE: req.params.code },
+      where: { CUST_CODE: pedagangCode },
+      transaction,
       logging: (query) => {
         req.sqlQuery = query;
       },
     });
 
     if (!updated) {
-      res.status(404).json({ message: "Pedagang not found" });
+      await transaction.rollback();
+      return res
+        .status(404)
+        .json({ message: "Pedagang not found during update" });
     }
 
+    if (CUST_STATUS === "nonaktif" && previousStatus !== "nonaktif") {
+      await DB_LAPAK.update(
+        {
+          LAPAK_PENYEWA: null,
+          LAPAK_MULAI: null,
+          LAPAK_AKHIR: null,
+          LAPAK_STATUS: "kosong",
+        },
+        {
+          where: { LAPAK_PENYEWA: pedagangCode },
+          transaction,
+        }
+      );
+    }
+
+    const { selectedLapaks, lapakMulai, lapakAkhir } = req.body;
+    if (selectedLapaks && Array.isArray(selectedLapaks)) {
+      // Kosongkan semua lapak yang sebelumnya dimiliki pedagang ini
+      await DB_LAPAK.update(
+        {
+          LAPAK_PENYEWA: null,
+          LAPAK_MULAI: null,
+          LAPAK_AKHIR: null,
+          LAPAK_STATUS: "kosong",
+        },
+        {
+          where: { LAPAK_PENYEWA: pedagangCode },
+          transaction,
+        }
+      );
+      // Assign lapak baru ke pedagang
+      if (selectedLapaks.length > 0) {
+        await DB_LAPAK.update(
+          {
+            LAPAK_PENYEWA: pedagangCode,
+            LAPAK_MULAI: lapakMulai,
+            LAPAK_AKHIR: lapakAkhir,
+            LAPAK_STATUS: "aktif",
+          },
+          {
+            where: { LAPAK_CODE: selectedLapaks },
+            transaction,
+          }
+        );
+      }
+    }
+
+    await transaction.commit();
+
     const updatedPedagang = await DB_PEDAGANG.findOne({
-      where: { CUST_CODE: req.params.code },
+      where: { CUST_CODE: pedagangCode },
+      include: [
+        {
+          model: data_pasar,
+          as: "pasar",
+          attributes: ["pasar_nama", "pasar_code"],
+        },
+        {
+          model: DB_LAPAK,
+          as: "lapaks",
+          attributes: [
+            "LAPAK_CODE",
+            "LAPAK_NAMA",
+            "LAPAK_MULAI",
+            "LAPAK_AKHIR",
+          ],
+        },
+      ],
     });
 
     const logSource = {
@@ -296,7 +409,7 @@ exports.updatePedagang = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: req.params.code,
+      LOG_TARGET: pedagangCode,
       LOG_DETAIL: "success",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"),
       LOG_OWNER: req.user.owner,
@@ -304,6 +417,9 @@ exports.updatePedagang = async (req, res) => {
     });
     return res.status(200).json(updatedPedagang);
   } catch (error) {
+    await transaction.rollback();
+    console.error("Error updating pedagang:", error);
+
     const logSource = {
       user: req.user,
       query: req.sqlQuery,
@@ -311,14 +427,17 @@ exports.updatePedagang = async (req, res) => {
 
     await addLogActivity({
       LOG_USER: req.user.id,
-      LOG_TARGET: null,
+      LOG_TARGET: pedagangCode,
       LOG_DETAIL: "failed",
       LOG_SOURCE: Buffer.from(JSON.stringify(logSource)).toString("base64"),
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
 
-    return res.status(400).json({ error: error.message });
+    return res.status(500).json({
+      message: "Internal server error while updating pedagang.",
+      error: error.message,
+    });
   }
 };
 
