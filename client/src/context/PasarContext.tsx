@@ -30,7 +30,7 @@ export const PasarProvider: React.FC<{ children: React.ReactNode }> = ({
     statusFilter = ""
   ) => {
     try {
-      const BASE_URL = "http://127.0.0.1/uploads/";
+      const BASE_URL = "https://dev1-p3.palindo.id/uploads/";
       const res = await api.get(
         `/pasar?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}`
       );

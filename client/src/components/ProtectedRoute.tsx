@@ -123,40 +123,49 @@ const ProtectedRoute: React.FC = () => {
     };
     
     fetchMenuPermissions();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, authLoading, location.pathname, allowedPaths, fetchAttempted, logout]);
 
+  // Check authorization when path changes
   useEffect(() => {
     if (!authLoading && isAuthenticated && allowedPaths.length > 0) {
       const authorized = isPathAuthorized(location.pathname, allowedPaths);
       setIsAuthorized(authorized);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, allowedPaths, isAuthenticated, authLoading]);
 
   const isPathAuthorized = (path: string, allowedPaths: string[]): boolean => {
+    // Always allow signin and unauthorized pages
     if (path === '/signin' || path === '/unauthorized') {
       return true;
     }
 
+    // Root path redirect to dashboard if dashboard is allowed
     if (path === '/' && allowedPaths.includes('/dashboard')) {
       return true;
     }
 
+    // Check whitelisted paths
     for (const whitelistedPath of whitelistedPaths) {
       if (path === whitelistedPath || path.startsWith(whitelistedPath + '/')) {
         return true;
       }
     }
 
+    // Exact match
     if (allowedPaths.includes(path)) {
       return true;
     }
     
+    // Prefix match for dynamic routes
     return allowedPaths.some(allowedPath => {
       if (!allowedPath) return false;
       return path.startsWith(allowedPath);
     });
   };
 
+  // Show loading while auth is being determined or permissions are being fetched
   if (authLoading || (isAuthenticated && loading)) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -170,11 +179,13 @@ const ProtectedRoute: React.FC = () => {
 
   // If not authenticated, redirect to signin
   if (!isAuthenticated) {
+    // console.log("User not authenticated, redirecting to signin");
     return <Navigate to="/signin" replace />;
   }
 
   // If authenticated but not authorized for current path
   if (!isAuthorized) {
+    // console.log(`Not authorized to access ${location.pathname}. Allowed paths:`, allowedPaths);
     return <Navigate to="/unauthorized" replace />;
   }
 

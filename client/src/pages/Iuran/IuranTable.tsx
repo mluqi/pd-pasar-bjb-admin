@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
   TableBody,
@@ -81,7 +82,7 @@ export default function IuranTable() {
         startDate || "",
         endDate || ""
       );
-      setTotalPages(response.totalPages); // Update total pages
+      setTotalPages(response.totalPages);
     } catch (error) {
       console.error("Failed to fetch iurans:", error);
     }
@@ -194,6 +195,7 @@ export default function IuranTable() {
                 "Metode Bayar",
                 "Waktu Bayar",
                 "User",
+                "Attachment",
                 "Actions",
               ].map((title) => (
                 <TableCell
@@ -279,6 +281,20 @@ export default function IuranTable() {
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
                   {iuran.IURAN_USER}
                 </TableCell>
+                <TableCell className="px-2 py-3 text-theme-sm">
+                  {iuran.IURAN_STATUS === "tidak berjualan" &&
+                    iuran.IURAN_BUKTI_FOTO && (
+                      <button
+                        onClick={() =>
+                          openPhotoProofModal(iuran.IURAN_BUKTI_FOTO)
+                        }
+                        className="ml-2 text-blue-500 hover:underline"
+                        title="Lihat Bukti Foto"
+                      >
+                        📷 Bukti Foto
+                      </button>
+                    )}
+                </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <button
                     onClick={() => openEditModal(iuran)}
@@ -292,18 +308,6 @@ export default function IuranTable() {
                   >
                     Delete
                   </button>
-                  {iuran.IURAN_STATUS === "tidak berjualan" &&
-                    iuran.IURAN_BUKTI_FOTO && (
-                      <button
-                        onClick={() =>
-                          openPhotoProofModal(iuran.IURAN_BUKTI_FOTO)
-                        }
-                        className="ml-2 text-blue-500 hover:underline"
-                        title="Lihat Bukti Foto"
-                      >
-                        📷
-                      </button>
-                    )}
                 </TableCell>
               </TableRow>
             ))}

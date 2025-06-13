@@ -115,7 +115,8 @@ const PedagangModal: React.FC<PedagangModalProps> = ({
       const currentPedagangCode = pedagang ? pedagang.CUST_CODE : undefined;
       fetchAllLapaks(currentPedagangCode);
     }
-  }, [isOpen, pedagang]); // Pastikan fetchAllLapaks & fetchAllPasars stabil (useCallback di context)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, pedagang]); 
 
   // const handleSelectChangeLapak = (value: string) => {
   //   setSelectedLapak(value);

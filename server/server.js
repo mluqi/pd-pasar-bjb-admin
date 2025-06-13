@@ -46,7 +46,7 @@ app.use("/api", logRoutes);
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(
     `Server is running on PORT ${PORT}`

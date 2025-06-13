@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
   TableBody,
@@ -38,13 +39,13 @@ export default function LapakTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedLapak, setSelectedLapak] = useState(null);
-  const [search, setSearch] = useState(""); // State untuk search input
-  const [statusFilter, setStatusFilter] = useState(""); // State untuk filter status
-  const [pasar, setPasar] = useState(""); // State untuk filter pasar
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [pasar, setPasar] = useState("");
   const [owner, setOwner] = useState("");
-  const [page, setPage] = useState(1); // State untuk pagination
-  const [limit, setLimit] = useState(10); // State untuk jumlah data per halaman
-  const [totalPages, setTotalPages] = useState(1); // Total halaman dari API
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   // State for photo proof modal
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function LapakTable() {
         pasar,
         owner
       );
-      setTotalPages(response.totalPages); // Update total pages
+      setTotalPages(response.totalPages);
     } catch (error) {
       console.error("Failed to fetch lapaks:", error);
     }
@@ -141,7 +142,7 @@ export default function LapakTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Input
@@ -154,7 +155,7 @@ export default function LapakTable() {
             options={statusOptions}
             onChange={(value) => setStatusFilter(value)}
             placeholder="All Status"
-            defaultValue={statusFilter}
+            value={statusFilter}
             className="w-full sm:w-auto"
           />
           <Select
@@ -167,7 +168,7 @@ export default function LapakTable() {
             ]}
             placeholder="All Pedagang"
             onChange={(value) => setOwner(value)}
-            defaultValue={owner}
+            value={owner}
             className="w-full sm:w-auto"
           />
           <Select
@@ -180,7 +181,7 @@ export default function LapakTable() {
             ]}
             placeholder="All Pasars"
             onChange={(value) => setPasar(value)}
-            defaultValue={owner}
+            value={owner}
             className="w-full sm:w-auto"
           />
         </div>
@@ -203,6 +204,7 @@ export default function LapakTable() {
                 "Tgl Akhir",
                 "Pasar",
                 "Status",
+                "Attachment",
                 "Actions",
               ].map((title) => (
                 <TableCell
@@ -283,6 +285,19 @@ export default function LapakTable() {
                     {lapak.LAPAK_STATUS}
                   </Badge>
                 </TableCell>
+                <TableCell className="px-2 py-3 text-theme-sm">
+                  {lapak.LAPAK_STATUS === "tutup" && lapak.LAPAK_BUKTI_FOTO && (
+                    <button
+                      onClick={() =>
+                        openPhotoProofModal(lapak.LAPAK_BUKTI_FOTO)
+                      }
+                      className="ml-2 text-blue-500 hover:underline cursor-pointer"
+                      title="Lihat Bukti Foto"
+                    >
+                      📷 Bukti Foto
+                    </button>
+                  )}
+                </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <button
                     onClick={() => openEditModal(lapak)}
@@ -296,17 +311,6 @@ export default function LapakTable() {
                   >
                     Delete
                   </button>
-                  {lapak.LAPAK_STATUS === "tutup" && lapak.LAPAK_BUKTI_FOTO && (
-                    <button
-                      onClick={() =>
-                        openPhotoProofModal(lapak.LAPAK_BUKTI_FOTO)
-                      }
-                      className="ml-2 text-blue-500 hover:underline"
-                      title="Lihat Bukti Foto"
-                    >
-                      📷 {/* Icon for viewing photo */}
-                    </button>
-                  )}
                 </TableCell>
               </TableRow>
             ))}
