@@ -72,6 +72,7 @@ exports.editUser = async (req, res) => {
   const { user_code } = req.params;
   const userId = req.user.id;
   const userOwner = req.user.owner;
+  const user_level = req.user.level;
 
   if (user_level !== "SUA") {
     res.status(401).json({ message: "Unauthorized" });

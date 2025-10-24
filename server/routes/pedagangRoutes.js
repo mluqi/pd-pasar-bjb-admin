@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const {
   getAllPedagang,
   getAllPedagangWithoutPagination,
+  getPedagangByNik,
   getPedagangById,
   createPedagang,
   updatePedagang,
@@ -12,6 +13,7 @@ const {
 
 router.get("/", authMiddleware, getAllPedagang);
 router.get("/all", authMiddleware, getAllPedagangWithoutPagination);
+router.get("/nik/:nik", getPedagangByNik);
 router.get("/:code", authMiddleware, getPedagangById);
 router.post("/", authMiddleware, createPedagang);
 router.put("/:code", authMiddleware, updatePedagang);

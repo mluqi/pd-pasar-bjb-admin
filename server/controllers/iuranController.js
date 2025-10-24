@@ -1,5 +1,5 @@
-const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models");
-const { Op, Sequelize, where } = require("sequelize");
+const { DB_IURAN, DB_PEDAGANG, DB_LAPAK, data_pasar } = require("../models");
+const { Op, Sequelize, where, fn, col, literal } = require("sequelize");
 const fs = require("fs");
 const path = require("path");
 const { addLogActivity } = require("./logController");
@@ -16,7 +16,7 @@ const deleteFileIfExists = (filePath) => {
 };
 
 exports.getAllIuran = async (req, res) => {
-  console.log(req.query)
+  console.log(req.query);
   const userId = req.user.id;
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
@@ -28,9 +28,15 @@ exports.getAllIuran = async (req, res) => {
   const status = req.query.status || "";
   const metode = req.query.metode || "";
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
   const offset = (page - 1) * limit;
 
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
+  }
 
   try {
     const whereClause = {
@@ -74,6 +80,7 @@ exports.getAllIuran = async (req, res) => {
       limit,
       offset,
       order: [["IURAN_TANGGAL", "DESC"]],
+      distinct: true,
       include: includeClause,
     });
 
@@ -475,10 +482,17 @@ exports.getMetodeBayarCount = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -523,11 +537,18 @@ exports.getDataRecentTransactions = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
   const limit = parseInt(req.query.limit) || 5;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -572,11 +593,20 @@ exports.getTotalTransactions = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
   }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
+  }
+
+  console.log(startDate, endDate);
 
   try {
     const whereClause = {
@@ -615,10 +645,17 @@ exports.getTotalIncome = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -658,10 +695,17 @@ exports.getDataNonTunai = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -702,10 +746,17 @@ exports.getDataTunai = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
+  }
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -769,8 +820,8 @@ exports.getDailyTransactionStats = async (req, res) => {
     }
 
     // Ensure endDate includes the whole day
-    endDate.setHours(23, 59, 59, 999);
     startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
     const baseWhereClause = {
       [Op.and]: [
@@ -813,7 +864,7 @@ exports.getDailyTransactionStats = async (req, res) => {
     const statsByDate = {};
     const dateCursor = new Date(startDate);
     while (dateCursor <= endDate) {
-      const dateString = dateCursor.toISOString().split("T")[0];
+      const dateString = dateCursor.toLocaleDateString("sv-SE"); // aman dan tidak UTC
       statsByDate[dateString] = { tunai: 0, nonTunai: 0 };
       dateCursor.setDate(dateCursor.getDate() + 1);
     }
@@ -829,12 +880,18 @@ exports.getDailyTransactionStats = async (req, res) => {
       }
     });
 
-    const dates = Object.keys(statsByDate).map((d) =>
-      new Date(d).toLocaleDateString("id-ID", {
+    // Ubah bagian pembuatan dates menjadi:
+    const dates = Object.keys(statsByDate).map((d) => {
+      // Split tanggal dan waktu secara manual
+      const [year, month, day] = d.split("-");
+      // Buat date object dengan waktu lokal (bukan UTC)
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString("id-ID", {
         day: "2-digit",
         month: "short",
-      })
-    );
+      });
+    });
+
     const tunaiData = Object.values(statsByDate).map((s) => s.tunai);
     const nonTunaiData = Object.values(statsByDate).map((s) => s.nonTunai);
 
@@ -850,10 +907,18 @@ exports.getIuranStatusCounts = async (req, res) => {
   const userLevel = req.user.level;
   const userPasar = req.user.owner;
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
 
   if (!userId) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (startDate) {
+    // Set startDate to the beginning of the day
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    // Set endDate to the end of the day to include all records on that day
+    endDate.setHours(23, 59, 59, 999);
   }
 
   try {
@@ -867,9 +932,7 @@ exports.getIuranStatusCounts = async (req, res) => {
       conditions.push({ IURAN_TANGGAL: { [Op.gte]: startDate } });
     }
     if (endDate) {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      conditions.push({ IURAN_TANGGAL: { [Op.lte]: endOfDay } });
+      conditions.push({ IURAN_TANGGAL: { [Op.lte]: endDate } });
     }
 
     const whereClause = { [Op.and]: conditions };
@@ -900,5 +963,172 @@ exports.getIuranStatusCounts = async (req, res) => {
   } catch (error) {
     console.error("Failed to fetch iuran status counts:", error);
     res.status(500).json({ error: "Failed to fetch iuran status counts." });
+  }
+};
+
+exports.getInvoiceStatsByPasar = async (req, res) => {
+  const { user } = req;
+  const { startDate, endDate } = req.query;
+
+  try {
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.IURAN_TANGGAL = { [Op.gte]: new Date(startDate) };
+    }
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      dateFilter.IURAN_TANGGAL = {
+        ...dateFilter.IURAN_TANGGAL,
+        [Op.lte]: endOfDay,
+      };
+    }
+
+    const whereClause = {
+      ...dateFilter,
+    };
+
+    const includeClause = [
+      {
+        model: DB_PEDAGANG,
+        as: "DB_PEDAGANG",
+        attributes: [],
+        required: true,
+        include: [
+          {
+            model: data_pasar,
+            as: "pasar",
+            attributes: [],
+            required: true,
+          },
+        ],
+      },
+    ];
+
+    if (user.level !== "SUA") {
+      includeClause[0].where = { CUST_OWNER: user.owner };
+    }
+
+    const stats = await DB_IURAN.findAll({
+      attributes: [
+        [fn("SUM", col("DB_IURAN.IURAN_JUMLAH")), "nominal_total_tagihan"],
+        [
+          fn(
+            "SUM",
+            literal(
+              `CASE WHEN IURAN_STATUS = 'paid' THEN IURAN_JUMLAH ELSE 0 END`
+            )
+          ),
+          "nominal_tagihan_terealisasi",
+        ],
+        [col("DB_PEDAGANG.pasar.pasar_nama"), "pasar_nama"],
+      ],
+      include: includeClause,
+      where: whereClause,
+      group: ["DB_PEDAGANG.pasar.pasar_nama"],
+      order: [[col("DB_PEDAGANG.pasar.pasar_nama"), "ASC"]],
+      raw: true,
+    });
+
+    // Convert counts from string to number
+    const result = stats.map((stat) => ({
+      ...stat,
+      nominal_total_tagihan: parseFloat(stat.nominal_total_tagihan) || 0,
+      nominal_tagihan_terealisasi:
+        parseFloat(stat.nominal_tagihan_terealisasi) || 0,
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to fetch invoice stats by pasar:", error);
+    res.status(500).json({ error: "Failed to fetch invoice stats by pasar." });
+  }
+};
+
+exports.getPaymentStatsByPasar = async (req, res) => {
+  const { user } = req;
+  const { startDate, endDate } = req.query;
+
+  try {
+    const dateFilter = {};
+    if (startDate) {
+      dateFilter.IURAN_WAKTU_BAYAR = { [Op.gte]: new Date(startDate) };
+    }
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      dateFilter.IURAN_WAKTU_BAYAR = {
+        ...dateFilter.IURAN_WAKTU_BAYAR,
+        [Op.lte]: endOfDay,
+      };
+    }
+
+    const whereClause = {
+      IURAN_STATUS: "paid",
+      ...dateFilter,
+    };
+
+    const includeClause = [
+      {
+        model: DB_PEDAGANG,
+        as: "DB_PEDAGANG",
+        attributes: [],
+        required: true,
+        include: [
+          {
+            model: data_pasar,
+            as: "pasar",
+            attributes: [],
+            required: true,
+          },
+        ],
+      },
+    ];
+
+    if (user.level !== "SUA") {
+      includeClause[0].where = { CUST_OWNER: user.owner };
+    }
+
+    const stats = await DB_IURAN.findAll({
+      attributes: [
+        [col("DB_PEDAGANG.pasar.pasar_nama"), "pasar_nama"],
+        [
+          fn(
+            "SUM",
+            literal(
+              `CASE WHEN IURAN_METODE_BAYAR = 'tunai' THEN IURAN_JUMLAH ELSE 0 END`
+            )
+          ),
+          "nominal_tunai",
+        ],
+        [
+          fn(
+            "SUM",
+            literal(
+              `CASE WHEN IURAN_METODE_BAYAR != 'tunai' THEN IURAN_JUMLAH ELSE 0 END`
+            )
+          ),
+          "nominal_non_tunai",
+        ],
+        [fn("SUM", col("IURAN_JUMLAH")), "nominal_total"],
+      ],
+      include: includeClause,
+      where: whereClause,
+      group: ["DB_PEDAGANG.pasar.pasar_nama"],
+      order: [[col("DB_PEDAGANG.pasar.pasar_nama"), "ASC"]],
+      raw: true,
+    });
+
+    const result = stats.map((stat) => ({
+      ...stat,
+      nominal_tunai: parseFloat(stat.nominal_tunai) || 0,
+      nominal_non_tunai: parseFloat(stat.nominal_non_tunai) || 0,
+      nominal_total: parseFloat(stat.nominal_total) || 0,
+    }));
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Failed to fetch payment stats by pasar:", error);
+    res.status(500).json({ error: "Failed to fetch payment stats by pasar." });
   }
 };

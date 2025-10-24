@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import api from "../services/api";
 
 interface Pedagang {
@@ -10,7 +10,7 @@ interface Pedagang {
   CUST_IURAN: string;
   CUST_STATUS: string;
   pasar?: { pasar_nama: string };
-  lapaks?: { LAPAK_NAMA: string; LAPAK_CODE: string; LAPAK_OWNER: string; }[]; 
+  lapaks?: { LAPAK_NAMA: string; LAPAK_CODE: string; LAPAK_OWNER: string }[];
 }
 
 interface PedagangContextProps {
@@ -20,8 +20,10 @@ interface PedagangContextProps {
     limit?: number,
     search?: string,
     owner?: string,
-    status?: string
-  ) => Promise<{ totalPages: number }>;
+    status?: string,
+    sortOrder?: string,
+    sortBy?: string
+  ) => Promise<{ totalPages: number; total?: number }>;
   addPedagang: (pedagangData: Partial<Pedagang>) => Promise<Pedagang | null>;
   editPedagang: (code: string, data: Partial<Pedagang>) => Promise<void>;
   deletePedagang: (code: string) => Promise<void>;
@@ -41,14 +43,19 @@ export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({
     limit = 10,
     search = "",
     owner = "",
-    status = ""
+    status = "",
+    sortOrder = "desc",
+    sortBy = "CUST_CODE"
   ) => {
     try {
       const response = await api.get(
-        `/pedagang?page=${page}&limit=${limit}&search=${search}&owner=${owner}&status=${status}`
+        `/pedagang?page=${page}&limit=${limit}&search=${search}&owner=${owner}&status=${status}&sortOrder=${sortOrder}&sortBy=${sortBy}`
       );
       setPedagangs(response.data.data || []);
-      return { totalPages: response.data.totalPages };
+      return {
+        totalPages: response.data.totalPages,
+        total: response.data.total,
+      };
     } catch (error) {
       console.error("Failed to fetch pedagangs:", error);
       return { totalPages: 1 };
@@ -85,10 +92,6 @@ export const PedagangProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Failed to delete pedagang:", error);
     }
   };
-
-  useEffect(() => {
-    fetchPedagangs();
-  }, []);
 
   return (
     <PedagangContext.Provider

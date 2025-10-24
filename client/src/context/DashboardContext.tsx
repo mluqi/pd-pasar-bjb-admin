@@ -43,6 +43,19 @@ interface IuranStatusStatItem {
   count: number;
 }
 
+interface InvoiceStatsByPasar {
+  pasar_nama: string;
+  nominal_total_tagihan: number;
+  nominal_tagihan_terealisasi: number;
+}
+
+interface PaymentStatsByPasar {
+  pasar_nama: string;
+  nominal_tunai: number;
+  nominal_non_tunai: number;
+  nominal_total: number;
+}
+
 interface DashboardContextType {
   metrics: MetricData | null;
   recentTransactions: IuranTransaction[];
@@ -53,6 +66,10 @@ interface DashboardContextType {
   loadingPaymentMethodStats: boolean;
   loadingDailyStats: boolean;
   loadingIuranStatusStats: boolean;
+  loadingInvoiceStatsByPasar: boolean;
+  loadingPaymentStatsByPasar: boolean;
+  invoiceStatsByPasar: InvoiceStatsByPasar[] | null;
+  paymentStatsByPasar: PaymentStatsByPasar[] | null;
   iuranStatusStats: IuranStatusStatItem[] | null;
   dailyStats: DailyTransactionStats | null;
 
@@ -88,6 +105,12 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
   const [iuranStatusStats, setIuranStatusStats] = useState<
     IuranStatusStatItem[] | null
   >(null);
+  const [invoiceStatsByPasar, setInvoiceStatsByPasar] = useState<
+    InvoiceStatsByPasar[] | null
+  >(null);
+  const [paymentStatsByPasar, setPaymentStatsByPasar] = useState<
+    PaymentStatsByPasar[] | null
+  >(null);
 
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [loadingRecentTransactions, setLoadingRecentTransactions] =
@@ -96,6 +119,10 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     useState(true);
   const [loadingDailyStats, setLoadingDailyStats] = useState(true);
   const [loadingIuranStatusStats, setLoadingIuranStatusStats] = useState(true);
+  const [loadingInvoiceStatsByPasar, setLoadingInvoiceStatsByPasar] =
+    useState(true);
+  const [loadingPaymentStatsByPasar, setLoadingPaymentStatsByPasar] =
+    useState(true);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -108,14 +135,18 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     params: Record<string, string | number> = {}
   ) => {
     const queryParams = new URLSearchParams();
+    // Helper to prevent timezone shift issues with `toISOString`
+    const toLocalISOString = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
     if (currentStartDate) {
-      queryParams.append(
-        "startDate",
-        currentStartDate.toISOString().split("T")[0]
-      );
+      queryParams.append("startDate", toLocalISOString(currentStartDate));
     }
     if (currentEndDate) {
-      queryParams.append("endDate", currentEndDate.toISOString().split("T")[0]);
+      queryParams.append("endDate", toLocalISOString(currentEndDate));
     }
     for (const key in params) {
       queryParams.append(key, String(params[key]));
@@ -131,6 +162,8 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
       setLoadingPaymentMethodStats(true);
       setLoadingDailyStats(true);
       setLoadingIuranStatusStats(true);
+      setLoadingInvoiceStatsByPasar(true);
+      setLoadingPaymentStatsByPasar(true);
       setError(null);
 
       try {
@@ -148,6 +181,8 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
           paymentStatsRes,
           dailyStatsRes,
           iuranStatusStatsRes,
+          invoiceStatsByPasarRes,
+          paymentStatsByPasarRes,
         ] = await Promise.all([
           api.get<{ totalIncome: number }>(
             `/iuran/total-income${dateFilteredQueryString}`
@@ -173,6 +208,12 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
           api.get<IuranStatusStatItem[]>(
             `/iuran/iuran-status-stats${dateFilteredQueryString}`
           ),
+          api.get<InvoiceStatsByPasar[]>(
+            `/iuran/invoice-stats-by-pasar${dateFilteredQueryString}`
+          ),
+          api.get<PaymentStatsByPasar[]>(
+            `/iuran/payment-stats-by-pasar${dateFilteredQueryString}`
+          ),
         ]);
 
         setMetrics({
@@ -193,8 +234,13 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
         setLoadingDailyStats(false);
 
         setIuranStatusStats(iuranStatusStatsRes.data);
-        setLoadingIuranStatusStats(false)
+        setLoadingIuranStatusStats(false);
 
+        setInvoiceStatsByPasar(invoiceStatsByPasarRes.data);
+        setLoadingInvoiceStatsByPasar(false);
+
+        setPaymentStatsByPasar(paymentStatsByPasarRes.data);
+        setLoadingPaymentStatsByPasar(false);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         const errorMessage =
@@ -206,12 +252,16 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
         setPaymentMethodStats(null);
         setDailyStats(null);
         setIuranStatusStats(null);
+        setInvoiceStatsByPasar(null);
+        setPaymentStatsByPasar(null);
 
         setLoadingMetrics(false);
         setLoadingRecentTransactions(false);
         setLoadingPaymentMethodStats(false);
         setLoadingDailyStats(false);
         setLoadingIuranStatusStats(false);
+        setLoadingInvoiceStatsByPasar(false);
+        setLoadingPaymentStatsByPasar(false);
       }
     },
     []
@@ -242,7 +292,11 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
         loadingPaymentMethodStats,
         loadingDailyStats,
         loadingIuranStatusStats,
+        loadingInvoiceStatsByPasar,
+        loadingPaymentStatsByPasar,
         iuranStatusStats,
+        invoiceStatsByPasar,
+        paymentStatsByPasar,
         error,
         startDate,
         endDate,

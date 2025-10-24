@@ -1,15 +1,17 @@
 const cron = require("node-cron");
-const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models"); // Import DB_LAPAK
+const { DB_IURAN, DB_PEDAGANG, DB_LAPAK } = require("../models");
 const { Op } = require("sequelize");
 
 const generateDailyIuran = async () => {
   try {
-    const processingDate = new Date(); // Date and time when the job runs
+    const processingDate = new Date(
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
+    );
+
     const year = processingDate.getFullYear().toString();
     const month = (processingDate.getMonth() + 1).toString().padStart(2, "0");
     const day = processingDate.getDate().toString().padStart(2, "0");
 
-    // Define start and end of the current day for checking existing iuran
     const todayStart = new Date(processingDate);
     todayStart.setHours(0, 0, 0, 0);
 
@@ -17,82 +19,104 @@ const generateDailyIuran = async () => {
     todayEnd.setHours(23, 59, 59, 999);
 
     const activePedagangs = await DB_PEDAGANG.findAll({
-      // Find active pedagangs
       where: { CUST_STATUS: "aktif" },
-      attributes: ['CUST_CODE', 'CUST_IURAN'],
-      include: [{
-        model: DB_LAPAK,
-        where: { LAPAK_STATUS: "aktif" },
-        attributes: [], 
-        required: true
-      }]
+      attributes: ["CUST_CODE", "CUST_IURAN"],
+      include: [
+        {
+          model: DB_LAPAK,
+          as: "lapaks",
+          where: { LAPAK_STATUS: "aktif" },
+          attributes: [],
+          required: true,
+        },
+      ],
     });
 
-    console.log(`Found ${activePedagangs.length} active pedagangs with active lapaks for iuran generation.`);
+    console.log(
+      `✔️ Found ${activePedagangs.length} active pedagangs with active lapaks.`
+    );
 
-    // Loop through the filtered list of pedagangs
+    const iuransToday = await DB_IURAN.findAll({
+      where: {
+        IURAN_TANGGAL: { [Op.gte]: todayStart, [Op.lt]: todayEnd },
+      },
+      attributes: ["IURAN_PEDAGANG", "IURAN_JUMLAH"],
+    });
+
+    const iuranMap = new Map();
+    for (const iuran of iuransToday) {
+      const key = `${iuran.IURAN_PEDAGANG}-${iuran.IURAN_JUMLAH}`;
+      iuranMap.set(key, true);
+    }
+
+    let sequenceNumber = 1;
+    const lastIuran = await DB_IURAN.findOne({
+      where: {
+        IURAN_CODE: { [Op.like]: `IU${year}${month}${day}%` },
+      },
+      order: [["IURAN_CODE", "DESC"]],
+    });
+
+    if (lastIuran) {
+      const lastSequence = parseInt(lastIuran.IURAN_CODE.slice(-5), 10);
+      sequenceNumber = lastSequence + 1;
+    }
+
+    let generatedCount = 0;
+
     for (const pedagang of activePedagangs) {
-      if (pedagang.CUST_IURAN == null) {
-        console.warn(`Pedagang ${pedagang.CUST_CODE} is missing CUST_IURAN or CUST_LAPAK. Skipping iuran generation.`);
+      if (pedagang.CUST_IURAN === null || pedagang.CUST_IURAN === undefined)
+        continue;
+
+      const iuranJumlah = parseFloat(pedagang.CUST_IURAN);
+      if (isNaN(iuranJumlah)) {
         continue;
       }
 
-      // Check if an iuran already exists for this pedagang, for this amount, on this day
-      const existingIuranForPedagangToday = await DB_IURAN.findOne({
-        where: {
-          IURAN_PEDAGANG: pedagang.CUST_CODE,
-          IURAN_JUMLAH: parseFloat(pedagang.CUST_IURAN),
-          IURAN_TANGGAL: {
-            [Op.gte]: todayStart,
-            [Op.lt]: todayEnd, // Records from todayStart up to (but not including) tomorrowStart
-          },
-        },
-      });
+      const key = `${pedagang.CUST_CODE}-${iuranJumlah}`;
+      if (iuranMap.has(key)) continue;
 
-      if (existingIuranForPedagangToday) {
-        console.log(`Iuran already exists for pedagang: ${pedagang.CUST_CODE} (Jumlah: ${pedagang.CUST_IURAN}) on ${processingDate.toDateString()}. Skipping.`);
-        continue; // Skip to the next pedagang
-      }
+      const uniqueCode = `IU${year}${month}${day}${sequenceNumber
+        .toString()
+        .padStart(5, "0")}`;
+      sequenceNumber++;
 
-      // If no existing iuran, proceed to generate IURAN_CODE and create the new iuran
-      const lastIuranForCodeGeneration = await DB_IURAN.findOne({
-        where: {
-          IURAN_CODE: {
-            [Op.like]: `IU${year}${month}${day}%`,
-          },
-        },
-        order: [["IURAN_CODE", "DESC"]],
-      });
+      const isFree = iuranJumlah === 0;
 
-      let sequenceNumber = "00001";
-      if (lastIuranForCodeGeneration) {
-        const lastCode = lastIuranForCodeGeneration.IURAN_CODE;
-        const lastSequence = lastCode.slice(-5);
-        const newSequenceNumber = parseInt(lastSequence, 10) + 1;
-        sequenceNumber = newSequenceNumber.toString().padStart(5, "0");
-      }
-
-      const uniqueCode = `IU${year}${month}${day}${sequenceNumber}`;
-
-      const iuranData = {
+      await DB_IURAN.create({
         IURAN_CODE: uniqueCode,
         IURAN_PEDAGANG: pedagang.CUST_CODE,
-        IURAN_TANGGAL: processingDate, // Store with the current timestamp
-        IURAN_JUMLAH: parseFloat(pedagang.CUST_IURAN),
-        IURAN_STATUS: "pending",
+        IURAN_TANGGAL: processingDate,
+        IURAN_JUMLAH: iuranJumlah,
+        IURAN_STATUS: isFree ? "paid" : "pending",
         IURAN_METODE_BAYAR: "",
-        IURAN_WAKTU_BAYAR: null,
-        IURAN_USER: "", 
-      };
+        IURAN_WAKTU_BAYAR: isFree ? processingDate : null,
+        IURAN_USER: isFree ? "SYSTEM" : "",
+      });
 
-      await DB_IURAN.create(iuranData);
-      console.log(`Iuran generated for pedagang: ${pedagang.CUST_CODE} (Jumlah: ${pedagang.CUST_IURAN})`);
+      console.log(
+        `✅ Generated iuran for ${pedagang.CUST_CODE} (${pedagang.CUST_IURAN})`
+      );
+      generatedCount++;
     }
+
+    console.log(
+      `🟢 Daily iuran generation complete. Total generated: ${generatedCount}`
+    );
   } catch (error) {
-    console.error("Failed to generate daily iuran:", error);
+    console.error("❌ Failed to generate daily iuran:", error);
   }
 };
 
-cron.schedule("0 1 * * *", generateDailyIuran);
+const recoveryHours = [1, 3, 6];
+
+for (const hour of recoveryHours) {
+  cron.schedule(`0 ${hour} * * *`, generateDailyIuran, {
+    timezone: "Asia/Jakarta",
+  });
+}
+
+console.log("🚀 Server startup: generating daily iuran immediately...");
+generateDailyIuran();
 
 module.exports = { generateDailyIuran };

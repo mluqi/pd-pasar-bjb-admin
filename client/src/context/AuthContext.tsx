@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import api from "../services/api";
 
-const BASE_URL = "https://dev1-p3.palindo.id/uploads/";
+const BASE_URL = "http://127.0.0.1:3001/uploads/";
 
 interface UserProfile {
   user_id: string;
@@ -16,6 +16,7 @@ interface UserProfile {
   user_level: string;
   user_phone: string;
   user_foto: string | null;
+  user_owner: string;
 }
 
 interface AuthContextType {
@@ -47,6 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const logout = () => {
+    console.log("Logging out user...");
     localStorage.removeItem("token");
     setUser(null);
     setIsAuthenticated(false);

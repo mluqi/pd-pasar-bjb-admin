@@ -84,7 +84,7 @@ const AppHeader: React.FC = () => {
           </button>
 
           <Link to="/" className="lg:hidden">
-            <span className="text-2xl font-semibold text-gray-800 dark:text-white/90">Pasar<span className="text-brand-500">Digital</span></span>
+            <span className="text-2xl font-semibold text-gray-800 dark:text-white/90">E-Retribusi<span className="text-brand-500">Pasar</span></span>
           </Link>
 
           <button

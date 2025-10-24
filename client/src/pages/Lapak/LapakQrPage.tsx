@@ -1,12 +1,23 @@
 import React from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 
+interface LapakData {
+  code: string;
+  nama: string;
+  blok: string;
+  pasar: string;
+  ukuran: string;
+  pemilik?: string;
+}
+
 const LapakQrPage: React.FC = () => {
   const { lapakCode } = useParams<{ lapakCode: string }>();
+  const location = useLocation();
+  const lapakData = location.state as LapakData | undefined;
 
   if (!lapakCode) {
     return (
@@ -49,6 +60,15 @@ const LapakQrPage: React.FC = () => {
     window.print();
   };
 
+  // Format tanggal untuk footer
+  const printDate = new Date().toLocaleDateString("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
     <>
       <PageMeta
@@ -81,8 +101,18 @@ const LapakQrPage: React.FC = () => {
         >
           <div className="p-6 flex flex-col items-center text-center">
             <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-2">
-              Lapak Code: <span className="font-bold">{lapakCode}</span>
+              Kode Lapak: <span className="font-bold">{lapakCode}</span>
             </h4>
+            {lapakData && (
+              <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                <p>Nama: {lapakData.nama}</p>
+                <p>Pasar: {lapakData.pasar}</p>
+                <p>
+                  Blok: {lapakData.blok} | Ukuran: {lapakData.ukuran}
+                </p>
+                {lapakData.pemilik && <p>Pemilik: {lapakData.pemilik}</p>}
+              </div>
+            )}
             <div className="my-4 p-2 border border-gray-200 dark:border-gray-700 rounded-lg inline-block bg-white">
               <img
                 src={qrImageUrl}
@@ -91,12 +121,9 @@ const LapakQrPage: React.FC = () => {
               />
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Scan QR code ini untuk mendapatkan informasi mengenai Lapak{" "}
-              <span className="font-semibold">{lapakCode}</span>.
+              Scan QR code ini untuk mendapatkan informasi mengenai Lapak.
             </p>
             <div className="mt-6 md:hidden">
-              {" "}
-              {/* Show print button on mobile if not in breadcrumb */}
               <Button onClick={handlePrint} variant="primary" size="sm">
                 Print QR Code
               </Button>
@@ -105,34 +132,44 @@ const LapakQrPage: React.FC = () => {
         </ComponentCard>
 
         {/* Content specifically for printing */}
-        <div className="hidden print:block print-container p-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-1">QR Code Lapak</h1>
-            <p className="text-xl font-semibold mb-4">{lapakCode}</p>
-            <div className="inline-block border border-black p-1 bg-white">
+        <div className="hidden print:block">
+          <div
+            className="page"
+            style={{
+              width: "210mm",
+              height: "297mm",
+              padding: "15mm",
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <h1 className="text-2xl font-bold mb-4">QR Code Lapak</h1>
+            <div className="text-center mb-6">
+              <p className="text-xl font-semibold">{lapakCode}</p>
+              {lapakData && (
+                <div className="mt-2 text-sm">
+                  <p>Nama: {lapakData.nama}</p>
+                  <p>Pasar: {lapakData.pasar}</p>
+                  <p>
+                    Blok: {lapakData.blok} | Ukuran: {lapakData.ukuran}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="border border-gray-300 p-2 bg-white mb-6">
               <img
                 src={qrImageUrl}
                 alt={`QR Code for Lapak ${lapakCode}`}
-                className="w-80 h-80"
+                className="w-60 h-60"
               />
             </div>
-            <p className="mt-4 text-sm">
-              Scan QR code ini untuk mendapatkan informasi mengenai Lapak{" "}
-              {lapakCode}.
-            </p>
-            <p className="mt-8 text-xs">
-              Dicetak pada:{" "}
-              {new Date().toLocaleDateString("id-ID", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })}{" "}
-              -{" "}
-              {new Date().toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
+            <div className="text-xs text-gray-500">
+              <p>Scan QR code untuk informasi lapak</p>
+              <p className="mt-4">Dicetak pada: {printDate}</p>
+            </div>
           </div>
         </div>
 
@@ -142,31 +179,31 @@ const LapakQrPage: React.FC = () => {
           </Link>
         </div>
       </div>
+
+      {/* Print Styles */}
+      <style>
+        {`
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .page, .page * {
+              visibility: visible;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              background: white;
+            }
+          }
+        `}
+      </style>
     </>
   );
 };
-
-// Add print-specific styles. You might want to put this in a global CSS file or a <style jsx global> tag if using Next.js
-// For now, let's add it here for simplicity or assume you'll move it to your main CSS.
-const printStyles = `
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-container, .print-container * {
-    visibility: visible;
-  }
-  .print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-`;
 
 export default LapakQrPage;

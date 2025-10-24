@@ -11,6 +11,7 @@ const StatisticChart: React.FC = () => {
     startDate, // To potentially show date range in title
     endDate, // To potentially show date range in title
   } = useDashboard();
+  console.log(dailyStats);
   const [series, setSeries] = useState<ApexAxisChartSeries>([]);
   const [options, setOptions] = useState<ApexOptions>({});
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -216,7 +217,7 @@ const StatisticChart: React.FC = () => {
           <p className="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
             Total pemasukan iuran tunai dan non-tunai per hari.
             {startDate && endDate && (
-              <span className="block text-xs">
+              <span className="block text-xs" key={startDate.getTime() + '-' + endDate.getTime()}>
                 Periode: {startDate.toLocaleDateString("id-ID")} -{" "}
                 {endDate.toLocaleDateString("id-ID")}
               </span>

@@ -19,11 +19,11 @@ export default function AuthLayout({
             <div className="flex flex-col items-center max-w-xs">
               <Link to="/" className="block mb-4">
                 <h1 className="text-white text-center text-4xl font-semibold ">
-                  Pasar<span className="text-brand-500">Digital</span>
+                  E-Retribusi<span className="text-brand-500">Pasar</span>
                 </h1>
               </Link>
               <p className="text-center text-gray-400 dark:text-white/60">
-                Pasar Digital by Palindo
+                E-Retribusi Pasar by Palindo
               </p>
             </div>
           </div>

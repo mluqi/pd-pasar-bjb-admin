@@ -16,6 +16,8 @@ const {
   getDataTunai,
   getDailyTransactionStats,
   getIuranStatusCounts,
+  getInvoiceStatsByPasar,
+  getPaymentStatsByPasar,
 } = require("../controllers/iuranController");
 
 router.get("/", authMiddleware, getAllIuran);
@@ -29,6 +31,8 @@ router.get("/non-tunai", authMiddleware, getDataNonTunai);
 router.get("/tunai", authMiddleware, getDataTunai);
 router.get("/daily-transaction-stats", authMiddleware, getDailyTransactionStats);
 router.get("/iuran-status-stats", authMiddleware, getIuranStatusCounts);
+router.get("/invoice-stats-by-pasar", authMiddleware, getInvoiceStatsByPasar);
+router.get("/payment-stats-by-pasar", authMiddleware, getPaymentStatsByPasar);
 
 router.get("/:code", authMiddleware, getIuranByCode);
 router.post("/", authMiddleware, uploadBuktiFoto.single("bukti_foto_iuran"), createIuran);

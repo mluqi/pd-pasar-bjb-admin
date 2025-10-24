@@ -15,7 +15,11 @@ const pedagangRoutes = require("./routes/pedagangRoutes");
 const lapakRoutes = require("./routes/lapakRoutes");
 const logRoutes = require("./routes/logRoutes");
 const menuRoutes = require("./routes/menuRoutes");
+const mobileRoutes = require("./routes/mobileRoutes")
+const InvoiceRoutes = require("./routes/invoiceRoutes")
+
 require("./services/iuranScheduler");
+require("./services/invoiceScheduler"); // Tambahkan ini
 
 const app = express();
 const server = http.createServer(app);
@@ -41,6 +45,8 @@ app.use("/api/iuran", iuranRoutes);
 app.use("/api/pedagang", pedagangRoutes);
 app.use("/api/lapak", lapakRoutes);
 app.use("/api/menus", menuRoutes);
+app.use("/api/mobile", mobileRoutes);
+app.use("/api/invoices", InvoiceRoutes);
 app.use("/api", logRoutes);
 
 // Static file serving

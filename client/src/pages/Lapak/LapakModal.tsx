@@ -4,7 +4,7 @@ import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import Button from "../../components/ui/button/Button";
 import Select from "../../components/form/Select";
-import DatePicker from "../../components/form/date-picker";
+// import DatePicker from "../../components/form/date-picker";
 import { useDropdownContext } from "../../context/DropdownContext";
 import { useLapakTypeContext } from "../../context/LapakTypeContext";
 
@@ -19,6 +19,8 @@ interface Lapak {
   LAPAK_AKHIR?: string | null;
   LAPAK_STATUS: string | "aktif" | "kosong" | "rusak" | "tutup";
   LAPAK_OWNER?: string;
+  LAPAK_HEREGISTRASI?: number | null;
+  LAPAK_SIPTU?: number | null;
   LAPAK_BUKTI_FOTO?: string | null;
 }
 
@@ -52,6 +54,8 @@ const LapakModal: React.FC<LapakModalProps> = ({
     LAPAK_AKHIR: null,
     LAPAK_STATUS: "kosong",
     LAPAK_OWNER: "",
+    LAPAK_HEREGISTRASI: null,
+    LAPAK_SIPTU: null,
   });
 
   const [buktiFoto, setBuktiFoto] = useState<File | null>(null);
@@ -70,6 +74,8 @@ const LapakModal: React.FC<LapakModalProps> = ({
         LAPAK_AKHIR: lapak.LAPAK_AKHIR || null,
         LAPAK_STATUS: lapak.LAPAK_STATUS || "",
         LAPAK_OWNER: lapak.LAPAK_OWNER || "",
+        LAPAK_HEREGISTRASI: lapak.LAPAK_HEREGISTRASI || null,
+        LAPAK_SIPTU: lapak.LAPAK_SIPTU || null,
       });
     } else {
       setForm({
@@ -82,6 +88,8 @@ const LapakModal: React.FC<LapakModalProps> = ({
         LAPAK_AKHIR: null,
         LAPAK_STATUS: "kosong",
         LAPAK_OWNER: "",
+        LAPAK_HEREGISTRASI: null,
+        LAPAK_SIPTU: null,
       });
       setBuktiFotoPreview(null); // Reset preview when adding new lapak
     }
@@ -230,6 +238,26 @@ const LapakModal: React.FC<LapakModalProps> = ({
             />
           </div>
           <div>
+            <Label>Heregistrasi</Label>
+            <Input
+              type="number"
+              name="LAPAK_HEREGISTRASI"
+              value={form.LAPAK_HEREGISTRASI || ""}
+              onChange={handleChange}
+              placeholder="Enter nominal heregistrasi"
+            />
+          </div>
+          <div>
+            <Label>SIPTU</Label>
+            <Input
+              type="number"
+              name="LAPAK_SIPTU"
+              value={form.LAPAK_SIPTU || ""}
+              onChange={handleChange}
+              placeholder="Enter nominal SIPTU"
+            />
+          </div>
+          <div>
             <Label>Type</Label>
             <Select
               options={[
@@ -265,7 +293,7 @@ const LapakModal: React.FC<LapakModalProps> = ({
                   className="dark:bg-dark-900"
                 />
               </div>
-              <div>
+              {/* <div>
                 <Label>Lapak Mulai</Label>
                 <DatePicker
                   id="lapak-mulai"
@@ -298,7 +326,7 @@ const LapakModal: React.FC<LapakModalProps> = ({
                     }))
                   }
                 />
-              </div>
+              </div> */}
             </>
           )}
           {pasars.length > 0 && (

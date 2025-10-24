@@ -5,7 +5,8 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { useEffect, useState } from "react";
+import { useEffect, useState, FC } from "react";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import TypeLapakModal from "./TypeLapakModal";
 import { useLapakTypeContext } from "../../context/LapakTypeContext";
 import Button from "../../components/ui/button/Button";
@@ -21,6 +22,9 @@ export default function TypeLapakTable() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTypeLapak, setSelectedTypeLapak] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [typeLapakToDelete, setTypeLapakToDelete] = useState<any | null>(null);
 
   useEffect(() => {
     fetchTypeLapaks();
@@ -55,26 +59,31 @@ export default function TypeLapakTable() {
     }
   };
 
-  const handleDeleteTypeLapak = async (TYPE_CODE) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this type lapak?"
-    );
-    if (!confirmDelete) return;
-    try {
-      await deleteTypeLapak(TYPE_CODE);
-    } catch (error) {
-      console.error("Failed to delete type lapak:", error);
+  const handleDeleteTypeLapak = (typeLapak: any) => {
+    setTypeLapakToDelete(typeLapak);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteTypeLapak = async () => {
+    if (typeLapakToDelete) {
+      setIsDeleting(true);
+      try {
+        await deleteTypeLapak(typeLapakToDelete.TYPE_CODE);
+      } catch (error) {
+        console.error("Failed to delete type lapak:", error);
+        alert("Failed to delete type lapak.");
+      } finally {
+        setIsDeleting(false);
+        setIsDeleteModalOpen(false);
+        setTypeLapakToDelete(null);
+      }
     }
   };
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="flex justify-end p-4">
-        <Button
-          onClick={openAddModal}
-        >
-          Add Type Lapak
-        </Button>
+        <Button onClick={openAddModal}>Add Type Lapak</Button>
       </div>
       <div className="max-w-full overflow-x-auto">
         <Table>
@@ -109,7 +118,7 @@ export default function TypeLapakTable() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDeleteTypeLapak(typeLapak.TYPE_CODE)}
+                    onClick={() => handleDeleteTypeLapak(typeLapak)}
                     className="ml-2 text-red-500 hover:underline"
                   >
                     Delete
@@ -126,6 +135,15 @@ export default function TypeLapakTable() {
         onClose={closeModal}
         typeLapak={isEditModalOpen ? selectedTypeLapak : null}
         onSave={handleSaveTypeLapak}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteTypeLapak}
+        title="Delete Tipe Lapak"
+        message={`Are you sure you want to delete tipe lapak "${typeLapakToDelete?.TYPE_NAMA}"? This action cannot be undone.`}
+        isConfirming={isDeleting}
       />
     </div>
   );

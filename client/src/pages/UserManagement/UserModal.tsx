@@ -17,6 +17,7 @@ interface User {
   user_level: string;
   user_foto?: string | File;
   user_status?: string;
+  user_owner?: string;
   pasar_code?: string;
   user_pass?: string;
 }
@@ -89,8 +90,8 @@ const UserModal: React.FC<UserModalProps> = ({
         user_email: user.user_email || "",
         user_level: user.user_level || "",
         user_status: user.user_status || "",
-        pasar_code: user.pasar_code || "",
-        user_foto: undefined,
+        pasar_code: user.user_owner || "",
+        user_foto: user.user_foto || undefined,
         user_pass: "",
       });
     } else {
@@ -272,7 +273,12 @@ const UserModal: React.FC<UserModalProps> = ({
                   <Select
                     options={(levels || []).map((level) => ({
                       value: level.level_code,
-                      label: level.level_name,
+                      label:
+                        level.level_name === "Petugas"
+                          ? "Admin Pasar"
+                          : level.level_name === "Pengguna"
+                          ? "Petugas Pasar"
+                          : level.level_name,
                     }))}
                     value={form.user_level || ""}
                     placeholder="Select Role Type"
@@ -283,19 +289,30 @@ const UserModal: React.FC<UserModalProps> = ({
 
                 <div className="col-span-2 lg:col-span-1">
                   <Label>Pasar</Label>
-                  <Select
-                    options={[
-                      { value: "", label: "All Pasars" },
-                      ...(pasars || []).map((pasar) => ({
-                        value: pasar.pasar_code,
-                        label: pasar.pasar_nama,
-                      })),
-                    ]}
-                    value={form.pasar_code || ""}
-                    placeholder="Select Pasar"
-                    onChange={handleSelectChangePasar}
-                    className="dark:bg-dark-900"
-                  />
+                  {user ? (
+                    <Input
+                      type="text"
+                      value={
+                        pasarList.find((p) => p.pasar_code === user.user_owner)
+                          ?.pasar_nama || "All Pasars"
+                      }
+                      disabled
+                    />
+                  ) : (
+                    <Select
+                      options={[
+                        { value: "", label: "All Pasars" },
+                        ...(pasars || []).map((pasar) => ({
+                          value: pasar.pasar_code,
+                          label: pasar.pasar_nama,
+                        })),
+                      ]}
+                      value={form.pasar_code || ""}
+                      placeholder="Select Pasar"
+                      onChange={handleSelectChangePasar}
+                      className="dark:bg-dark-900"
+                    />
+                  )}
                 </div>
 
                 <div className="col-span-2 lg:col-span-1">
@@ -320,9 +337,16 @@ const UserModal: React.FC<UserModalProps> = ({
                     onChange={handleFileChange}
                     placeholder="Upload user photo"
                   />
-                  {form.user_foto instanceof File && (
+                  <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">
+                    Hanya format JPG dan PNG yang diterima.
+                  </p>
+                  {form.user_foto && (
                     <img
-                      src={URL.createObjectURL(form.user_foto)}
+                      src={
+                        form.user_foto instanceof File
+                          ? URL.createObjectURL(form.user_foto)
+                          : form.user_foto
+                      }
                       alt="Preview"
                       className="mt-2 w-20 h-20 rounded-full object-cover"
                     />

@@ -32,7 +32,7 @@ interface LogContextProps {
     actionFilter?: string,
     startDate?: string,
     endDate?: string
-  ) => Promise<{ totalPages: number }>;
+  ) => Promise<{ totalPages: number, total?: number }>;
   fetchLogAkses: (
     page?: number,
     limit?: number,
@@ -42,7 +42,7 @@ interface LogContextProps {
     browserFilter?: string,
     startDate?: string,
     endDate?: string
-  ) => Promise<{ totalPages: number }>;
+  ) => Promise<{ totalPages: number, total?: number }>;
 }
 
 const LogContext = createContext<LogContextProps | undefined>(undefined);
@@ -74,7 +74,7 @@ export const LogProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const res = await api.get(`/log-activity?${params.toString()}`);
       // console.log("API Response in Context:", res.data);
       setLogActivity(res.data.data);
-      return { totalPages: res.data.totalPages };
+      return { totalPages: res.data.totalPages, total: res.data.total };
     } catch (error) {
       console.error("Failed to fetch log activity in Context:", error);
       return { totalPages: 1 };
@@ -103,7 +103,7 @@ export const LogProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       const res = await api.get(`/log-akses?${params.toString()}`);
       setLogAkses(res.data.data);
-      return { totalPages: res.data.totalPages };
+      return { totalPages: res.data.totalPages, total: res.data.total };
     } catch (error) {
       console.error("Failed to fetch log access:", error);
       return { totalPages: 1 };

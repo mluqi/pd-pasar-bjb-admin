@@ -445,11 +445,24 @@ exports.editProfile = async (req, res) => {
       user.user_foto = req.file.filename;
     }
 
+    console.log("[DEBUG] User object BEFORE save:", user.toJSON());
+
     await user.save();
+
+    // [DEBUG] Periksa kembali data langsung dari database setelah disimpan
+    const userAfterSave = await userakses.findByPk(userId);
+    console.log(
+      "[DEBUG] Nilai 'user_validation' di database SETELAH save:",
+      userAfterSave.user_validation
+    );
+
+    const responseData = userAfterSave.toJSON();
+    delete responseData.user_pass;
+    delete responseData.user_validation;
 
     return res.status(200).json({
       message: "Profile updated successfully",
-      data: user,
+      data: responseData,
     });
   } catch (error) {
     console.error("Edit Profile Error:", error);

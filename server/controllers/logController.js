@@ -8,8 +8,15 @@ exports.getAllLogActivity = async (req, res) => {
   const status = req.query.status || "";
   const action = req.query.action || "";
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
   const offset = (page - 1) * limit;
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
+  }
 
   try {
     const whereClause = [
@@ -52,8 +59,15 @@ exports.getAllLogAkses = async (req, res) => {
   const status = req.query.status || "";
   const browser = req.query.browser || "";
   const startDate = req.query.startDate ? new Date(req.query.startDate) : null;
-  const endDate = req.query.endDate ? new Date(req.query.endDate) : null;
+  let endDate = req.query.endDate ? new Date(req.query.endDate) : null;
   const offset = (page - 1) * limit;
+
+  if (startDate) {
+    startDate.setHours(0, 0, 0, 0);
+  }
+  if (endDate) {
+    endDate.setHours(23, 59, 59, 999);
+  }
 
   try {
     const whereClause = [

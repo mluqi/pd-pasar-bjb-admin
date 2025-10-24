@@ -40,6 +40,8 @@ module.exports = (sequelize, DataTypes) => {
       LAPAK_MULAI: { type: DataTypes.DATE, allowNull: true },
       LAPAK_AKHIR: { type: DataTypes.DATE, allowNull: true },
       LAPAK_STATUS: DataTypes.ENUM("aktif", "kosong", "rusak", "tutup"),
+      LAPAK_HEREGISTRASI: { type: DataTypes.BIGINT, allowNull: true },
+      LAPAK_SIPTU: { type: DataTypes.BIGINT, allowNull: true },
       LAPAK_OWNER: { type: DataTypes.STRING(50), allowNull: true },
       LAPAK_BUKTI_FOTO: {
         type: DataTypes.STRING(255),

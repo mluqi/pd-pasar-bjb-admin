@@ -25,6 +25,7 @@ exports.getAllLapak = async (req, res) => {
   const status = req.query.status || "";
   const pasar = req.query.pasar || "";
   const owner = req.query.owner || "";
+  const sortOrder = req.query.sortOrder || "desc";
   const offset = (page - 1) * limit;
 
   try {
@@ -49,7 +50,7 @@ exports.getAllLapak = async (req, res) => {
       where: whereClause,
       limit,
       offset,
-      order: [["LAPAK_NAMA", "ASC"]],
+      order: [["LAPAK_CODE", sortOrder]],
       include: [
         { model: data_pasar, as: "pasar", attributes: ["pasar_nama"] },
         { model: DB_PEDAGANG, attributes: ["CUST_CODE", "CUST_NAMA"] },
@@ -90,7 +91,7 @@ exports.getAllLapakWithoutPagination = async (req, res) => {
         [Op.or]: [
           { LAPAK_STATUS: "kosong" },
           { LAPAK_PENYEWA: forPedagangCode },
-        ]
+        ],
       });
     } else {
       // Jika menambah baru, hanya tampilkan lapak kosong
@@ -160,6 +161,7 @@ exports.getLapakByCode = async (req, res) => {
 exports.createLapak = async (req, res) => {
   const userId = req.user.id;
   const pasarCode = req.user.owner;
+  const userLevel = req.user.level;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
@@ -179,9 +181,23 @@ exports.createLapak = async (req, res) => {
     LAPAK_TYPE,
     LAPAK_STATUS,
     LAPAK_PENYEWA,
-    LAPAK_MULAI,
-    LAPAK_AKHIR,
+    // LAPAK_MULAI
+    // LAPAK_AKHIR,
+    LAPAK_OWNER,
+    LAPAK_HEREGISTRASI,
+    LAPAK_SIPTU,
   } = req.body;
+
+  const currentDate = new Date();
+  const defaultMulai = new Date(currentDate);
+  defaultMulai.setHours(0, 0, 0, 0);
+  const defaultAkhir = new Date(currentDate);
+  defaultAkhir.setFullYear(defaultAkhir.getFullYear() + 20);
+  defaultAkhir.setHours(23, 59, 59, 999);
+
+  // Set default values if not provided
+  const LAPAK_MULAI = defaultMulai;
+  const LAPAK_AKHIR = defaultAkhir;
 
   if (
     !LAPAK_NAMA ||
@@ -192,7 +208,14 @@ exports.createLapak = async (req, res) => {
   ) {
     return res.status(400).json({ message: "All fields are required" });
   }
-  const LAPAK_OWNER = pasarCode;
+
+  let finalLapakOwner;
+
+  if (userLevel === "SUA") {
+    finalLapakOwner = LAPAK_OWNER || pasarCode;
+  } else {
+    finalLapakOwner = pasarCode;
+  }
 
   const existingLapak = await DB_LAPAK.findOne({
     where: { LAPAK_NAMA, LAPAK_BLOK, LAPAK_UKURAN, LAPAK_TYPE },
@@ -203,7 +226,7 @@ exports.createLapak = async (req, res) => {
 
   const prefix = "LAP";
   const lastLapak = await DB_LAPAK.findOne({
-    where: { LAPAK_OWNER: LAPAK_OWNER },
+    where: { LAPAK_OWNER: finalLapakOwner },
     order: [["LAPAK_CODE", "DESC"]],
   });
   const lastLapakCode = lastLapak ? lastLapak.LAPAK_CODE : null;
@@ -227,11 +250,9 @@ exports.createLapak = async (req, res) => {
   }
 
   if (LAPAK_STATUS === "tutup" && !lapakBuktiFotoPath) {
-    return res
-      .status(400)
-      .json({
-        message: "Bukti foto wajib diunggah jika status lapak adalah tutup.",
-      });
+    return res.status(400).json({
+      message: "Bukti foto wajib diunggah jika status lapak adalah tutup.",
+    });
   }
 
   try {
@@ -246,8 +267,10 @@ exports.createLapak = async (req, res) => {
         LAPAK_MULAI: LAPAK_MULAI === "" ? null : LAPAK_MULAI,
         LAPAK_AKHIR: LAPAK_AKHIR === "" ? null : LAPAK_AKHIR,
         LAPAK_STATUS,
-        LAPAK_OWNER,
+        LAPAK_OWNER: finalLapakOwner,
         LAPAK_BUKTI_FOTO: LAPAK_STATUS === "tutup" ? lapakBuktiFotoPath : null,
+        LAPAK_HEREGISTRASI: LAPAK_HEREGISTRASI || null,
+        LAPAK_SIPTU: LAPAK_SIPTU || null,
       },
       {
         logging: (query) => {
@@ -324,13 +347,13 @@ exports.updateLapak = async (req, res) => {
         updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") &&
         updatePayload.LAPAK_BUKTI_FOTO === null
       ) {
-        finalBuktiFoto = null; 
+        finalBuktiFoto = null;
       } else if (
         updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") &&
         updatePayload.LAPAK_BUKTI_FOTO === ""
       ) {
         // Sent as empty string from frontend
-        finalBuktiFoto = null; 
+        finalBuktiFoto = null;
       } else if (
         !updatePayload.hasOwnProperty("LAPAK_BUKTI_FOTO") ||
         updatePayload.LAPAK_BUKTI_FOTO === undefined
@@ -341,11 +364,9 @@ exports.updateLapak = async (req, res) => {
 
     if (finalStatus === "tutup") {
       if (!finalBuktiFoto) {
-        return res
-          .status(400)
-          .json({
-            message: "Bukti foto wajib ada jika status lapak adalah tutup.",
-          });
+        return res.status(400).json({
+          message: "Bukti foto wajib ada jika status lapak adalah tutup.",
+        });
       }
       updatePayload.LAPAK_BUKTI_FOTO = finalBuktiFoto;
     } else {
@@ -497,7 +518,6 @@ exports.updateLapakStatus = async (req, res) => {
     });
 
     return res.status(201).json(updatedLapak);
-    
   } catch (error) {
     const logSource = {
       user: req.user,
@@ -511,7 +531,7 @@ exports.updateLapakStatus = async (req, res) => {
       LOG_OWNER: req.user.owner,
       LOG_ACTION: "update",
     });
-    console.log(error)
+    console.log(error);
     res.status(500).json({ error: error.message });
   }
 };

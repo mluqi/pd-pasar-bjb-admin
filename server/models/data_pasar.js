@@ -14,7 +14,12 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'user_owner',
         sourceKey: 'pasar_code',
         as: 'users'
-      });      
+      });
+      data_pasar.hasMany(models.DB_LAPAK, {
+        foreignKey: 'LAPAK_OWNER',
+        sourceKey: 'pasar_code',
+        as: 'lapaks'
+      });
     }
   }
   data_pasar.init({
@@ -25,10 +30,15 @@ module.exports = (sequelize, DataTypes) => {
     pasar_nama: DataTypes.STRING,
     pasar_logo: DataTypes.TEXT,
     pasar_status: DataTypes.ENUM('A', 'N'),
-    pasar_token: DataTypes.TEXT
+    pasar_qrcode: DataTypes.TEXT,
+    pasar_tanggal_jatuh_tempo: {
+      type: DataTypes.STRING(5), // Format MM-DD
+      allowNull: true,
+    },
   }, {
     sequelize,
     modelName: 'data_pasar',
+    tableName: 'data_pasars',
   });
   return data_pasar;
 };

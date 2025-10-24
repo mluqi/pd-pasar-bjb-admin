@@ -12,6 +12,8 @@ interface Lapak {
   LAPAK_AKHIR: string | null;
   LAPAK_STATUS: "aktif" | "kosong" | "rusak" | "tutup";
   LAPAK_OWNER: string;
+  LAPAK_HEREGISTRASI?: number | null;
+  LAPAK_SIPTU?: number | null;
   LAPAK_BUKTI_FOTO?: string | null;
   // Optional: Add types for included models if you access them directly
   pasar?: { pasar_nama: string };
@@ -21,14 +23,17 @@ interface Lapak {
 
 interface LapakContextProps {
   lapaks: Lapak[];
+  allLapaks: Lapak[];
+  fetchAllLapaks: () => Promise<void>;
   fetchLapaks: (
     page: number,
     limit: number,
     search: string,
     statusFilter: string,
     pasar: string,
-    owner: string
-  ) => Promise<void>;
+    owner: string,
+    sortOrder?: string
+  ) => Promise<{ totalPages: number; total?: number }>;
   addLapak: (formData: FormData) => Promise<void>;
   editLapak: (LAPAK_CODE: string, formData: FormData) => Promise<void>;
   editStatusLapak: (LAPAK_CODE: string, data: Partial<Lapak>) => Promise<void>;
@@ -41,6 +46,19 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [lapaks, setLapaks] = useState<Lapak[]>([]);
+  const [allLapaks, setAllLapaks] = useState<Lapak[]>([]);
+
+  const fetchAllLapaks = async (): Promise<void> => {
+    try {
+      const res = await api.get(
+        `/lapak?page=1&limit=100000&search=&status=&pasar=&owner=&sortOrder=desc`
+      );
+      setAllLapaks(res.data.data);
+    } catch (error) {
+      console.error("Failed to fetch all lapaks:", error);
+      throw error; // Re-throw to allow error handling in components
+    }
+  };
 
   const fetchLapaks = async (
     page = 1,
@@ -48,55 +66,77 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({
     search = "",
     statusFilter = "",
     pasar = "",
-    owner = ""
-  ) => {
+    owner = "",
+    sortOrder = "desc"
+  ): Promise<{ totalPages: number; total?: number }> => {
     try {
       const res = await api.get(
-        `/lapak?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}&owner=${owner}`
+        `/lapak?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}&owner=${owner}&sortOrder=${sortOrder}`
       );
+
       setLapaks(res.data.data);
-      return { totalPages: res.data.totalPages };
+
+      // Return the totalPages from the response
+      return {
+        totalPages:
+          res.data.totalPages || Math.ceil((res.data.total || 0) / limit),
+        total: res.data.total,
+      };
     } catch (error) {
       console.error("Failed to fetch lapaks:", error);
-      return { totalPages: 1 };
+      throw error; // Re-throw to allow error handling in components
     }
   };
 
-  const addLapak = async (formData: FormData) => {
+  const addLapak = async (formData: FormData): Promise<void> => {
     console.log("Adding lapak with formData:", formData);
     try {
       await api.post("/lapak", formData);
+      // Refresh the current lapaks list after adding
       await fetchLapaks();
     } catch (error) {
       console.error("Failed to add lapak:", error);
+      throw error;
     }
   };
 
-  const editLapak = async (LAPAK_CODE: string, formData: FormData) => {
+  const editLapak = async (
+    LAPAK_CODE: string,
+    formData: FormData
+  ): Promise<void> => {
     try {
       await api.put(`/lapak/${LAPAK_CODE}`, formData);
+      // Refresh the current lapaks list after editing
       await fetchLapaks();
     } catch (error) {
       console.error("Failed to edit lapak:", error);
+      throw error;
     }
   };
 
-  const editStatusLapak = async (LAPAK_CODE: string, data: Partial<Lapak>) => {
+  const editStatusLapak = async (
+    LAPAK_CODE: string,
+    data: Partial<Lapak>
+  ): Promise<void> => {
     try {
       const res = await api.put(`/lapak/${LAPAK_CODE}/status`, data);
+      // Refresh the current lapaks list after status change
       await fetchLapaks();
       console.log(res);
     } catch (error) {
-      console.error("Failed to edit lapak:", error);
+      console.error("Failed to edit lapak status:", error);
+      throw error;
     }
   };
 
-  const deleteLapak = async (LAPAK_CODE: string) => {
+  const deleteLapak = async (LAPAK_CODE: string): Promise<void> => {
     try {
       await api.delete(`/lapak/${LAPAK_CODE}`);
+      // Refresh the current lapaks list after deletion
       await fetchLapaks();
     } catch (error) {
       console.error("Failed to delete lapak:", error);
+      throw error;
     }
   };
 
@@ -104,6 +144,8 @@ export const LapakProvider: React.FC<{ children: React.ReactNode }> = ({
     <LapakContext.Provider
       value={{
         lapaks,
+        allLapaks,
+        fetchAllLapaks,
         fetchLapaks,
         addLapak,
         editLapak,

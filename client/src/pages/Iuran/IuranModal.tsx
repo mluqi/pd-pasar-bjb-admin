@@ -182,9 +182,13 @@ const IuranModal: React.FC<IuranModalProps> = ({
                 form.IURAN_TANGGAL ? new Date(form.IURAN_TANGGAL) : undefined
               } // Set default date
               onChange={(dates) => {
-                const formattedDate = new Date(dates[0])
-                  .toISOString()
-                  .split("T")[0];
+                const date = new Date(dates[0]);
+                // Format to YYYY-MM-DD in local timezone to avoid timezone shift
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                const formattedDate = `${year}-${month}-${day}`;
+
                 setForm((prev) => ({ ...prev, IURAN_TANGGAL: formattedDate }));
                 console.log("Selected date:", formattedDate);
               }}

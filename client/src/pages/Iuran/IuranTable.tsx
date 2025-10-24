@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 import {
   Table,
@@ -14,6 +15,7 @@ import Button from "../../components/ui/button/Button";
 import Select from "../../components/form/Select";
 import Input from "../../components/form/input/InputField";
 
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { useIuranContext } from "../../context/IuranContext";
 import RangeDatePicker from "../../components/form/RangeDatePicker";
 
@@ -55,12 +57,17 @@ export default function IuranTable() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
   const [photoModalUrl, setPhotoModalUrl] = useState<string | null>(null);
 
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [iuranToDelete, setIuranToDelete] = useState<any | null>(null);
+
   const openPhotoProofModal = (buktiFotoPath: string) => {
     const serverBaseUrl =
-      import.meta.env.VITE_SERVER_BASE_URL || "https://dev1-p3.palindo.id";
+      import.meta.env.VITE_SERVER_BASE_URL || "http://127.0.0.1:3001";
     setPhotoModalUrl(`${serverBaseUrl}/${buktiFotoPath}`);
     setIsPhotoModalOpen(true);
   };
@@ -83,6 +90,7 @@ export default function IuranTable() {
         endDate || ""
       );
       setTotalPages(response.totalPages);
+      setTotalData(response.total || 0);
     } catch (error) {
       console.error("Failed to fetch iurans:", error);
     }
@@ -122,18 +130,37 @@ export default function IuranTable() {
     }
   };
 
-  const handleDeleteIuran = async (IURAN_CODE) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this iuran?"
-    );
-    if (!confirmDelete) return;
-    try {
-      await deleteIuran(IURAN_CODE);
-      await fetchIuransData();
-      console.log("Iuran deleted successfully");
-    } catch (error) {
-      console.error("Failed to delete iuran:", error);
+  const handleDeleteIuran = (iuran: any) => {
+    setIuranToDelete(iuran);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteIuran = async () => {
+    if (iuranToDelete) {
+      setIsDeleting(true);
+      try {
+        await deleteIuran(iuranToDelete.IURAN_CODE);
+        await fetchIuransData();
+        console.log("Iuran deleted successfully");
+      } catch (error) {
+        console.error("Failed to delete iuran:", error);
+        alert("Failed to delete iuran.");
+      } finally {
+        setIsDeleting(false);
+        setIsDeleteModalOpen(false);
+        setIuranToDelete(null);
+      }
     }
+  };
+
+  const formatCurrency = (amount: string | number) => {
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(num);
   };
 
   return (
@@ -153,20 +180,29 @@ export default function IuranTable() {
             type="text"
             placeholder="Search by code or pedagang"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
           <Select
             options={statusOptions}
             placeholder="All Status"
-            onChange={(value) => setStatusFilter(value)}
-            value=""
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            value={statusFilter}
             className="w-full sm:w-auto"
           />
           <Select
             options={metodeBayarOptions}
             placeholder="All Metode Bayar"
-            onChange={(value) => setMetodeBayarFilter(value)}
-            value=""
+            onChange={(value) => {
+              setMetodeBayarFilter(value);
+              setPage(1);
+            }}
+            value={metodeBayarFilter}
             className="w-full sm:w-auto"
           />
           <RangeDatePicker
@@ -175,6 +211,7 @@ export default function IuranTable() {
             defaultDates={dateRange}
             onChange={(dates) => {
               setDateRange(dates);
+              setPage(1);
             }}
           />
         </div>
@@ -242,7 +279,7 @@ export default function IuranTable() {
                   })}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
-                  {iuran.IURAN_JUMLAH}
+                  {formatCurrency(iuran.IURAN_JUMLAH)}
                 </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <Badge
@@ -303,7 +340,7 @@ export default function IuranTable() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDeleteIuran(iuran.IURAN_CODE)}
+                    onClick={() => handleDeleteIuran(iuran)}
                     className="ml-2 text-red-500 hover:underline"
                   >
                     Delete
@@ -320,7 +357,7 @@ export default function IuranTable() {
           Previous
         </Button>
         <span className="text-gray-700 dark:text-gray-400">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} ({totalData} total entries)
         </span>
         <Button
           disabled={page === totalPages}
@@ -335,6 +372,15 @@ export default function IuranTable() {
         onClose={closeModal}
         iuran={isEditModalOpen ? selectedIuran : null}
         onSave={handleSaveIuran}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteIuran}
+        title="Delete Iuran"
+        message={`Are you sure you want to delete iuran with code "${iuranToDelete?.IURAN_CODE}"? This action cannot be undone.`}
+        isConfirming={isDeleting}
       />
 
       {/* Photo Proof Modal */}

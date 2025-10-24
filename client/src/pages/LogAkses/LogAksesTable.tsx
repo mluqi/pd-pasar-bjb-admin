@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import Badge from "../../components/ui/badge/Badge";
 import Input from "../../components/form/input/InputField";
 import Select from "../../components/form/Select";
-import DatePicker from "../../components/form/date-picker";
+// import DatePicker from "../../components/form/date-picker";
 import Button from "../../components/ui/button/Button";
 import RangeDatePicker from "../../components/form/RangeDatePicker";
 
@@ -49,6 +49,7 @@ export default function LogAksesTable() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0); // Total data count from API
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchLogAksesData = async () => {
@@ -65,6 +66,7 @@ export default function LogAksesTable() {
         endDate
       );
       setTotalPages(response.totalPages);
+      setTotalData(response.total || 0); 
     } catch (error) {
       console.error("Failed to fetch log access:", error);
     } finally {
@@ -85,7 +87,10 @@ export default function LogAksesTable() {
             type="text"
             placeholder="Search by user"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 border rounded w-full sm:w-auto flex-grow"
           />
           <Select
@@ -94,21 +99,29 @@ export default function LogAksesTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
 
           <Select
             options={statusOptions}
-            onChange={(value) => setStatusFilter(value)}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
             placeholder="All Status"
             className="w-full sm:w-auto"
+            value={statusFilter}
           />
           <Select
             options={browserOptions}
-            onChange={(value) => setBrowserFilter(value)}
+            onChange={(value) => {
+              setBrowserFilter(value);
+              setPage(1);
+            }}
             placeholder="All Browsers"
             className="w-full sm:w-auto"
+            value={browserFilter}
           />
           <RangeDatePicker
             id="date-range"
@@ -116,6 +129,7 @@ export default function LogAksesTable() {
             defaultDates={dateRange}
             onChange={(dates) => {
               setDateRange(dates);
+              setPage(1);
             }}
           />
         </div>
@@ -215,7 +229,7 @@ export default function LogAksesTable() {
           Previous
         </Button>
         <span className="dark:text-gray-400">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} ({totalData} total entries)
         </span>
         <Button
           disabled={page === totalPages}

@@ -17,10 +17,21 @@ exports.addPasar = async (req, res) => {
   }
 
   try {
-    const { pasar_nama, pasar_status } = req.body;
+    const {
+      pasar_nama,
+      pasar_status,
+      pasar_qrcode,
+      pasar_tanggal_jatuh_tempo,
+    } = req.body;
 
     if (!pasar_nama || !pasar_status) {
       res.status(400).json({ message: "Nama dan status pasar diperlukan." });
+    }
+
+    let dueDate = null;
+    if (pasar_tanggal_jatuh_tempo) {
+      // Ekstrak MM-DD dari YYYY-MM-DD
+      dueDate = pasar_tanggal_jatuh_tempo.substring(5);
     }
 
     const existingPasar = await data_pasar.findOne({
@@ -37,7 +48,7 @@ exports.addPasar = async (req, res) => {
       res.status(400).json({ message });
     }
 
-    const pasar_logo_filename = req.file ? req.file.filename : null;
+    const pasar_logo_filename = req.files?.pasar_logo?.[0]?.filename || null;
 
     let nextSequence = 1;
     const lastPasar = await data_pasar.findOne({
@@ -75,6 +86,8 @@ exports.addPasar = async (req, res) => {
         pasar_nama,
         pasar_status,
         pasar_logo: pasar_logo_filename,
+        pasar_qrcode: pasar_qrcode || null,
+        pasar_tanggal_jatuh_tempo: dueDate,
       },
       {
         logging: (query) => {
@@ -123,7 +136,6 @@ exports.addPasar = async (req, res) => {
       .json({ message: "Terjadi kesalahan server saat menambahkan pasar." });
   }
 };
-
 
 exports.getAllPasar = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -185,6 +197,38 @@ exports.getAllPasarWithoutPagination = async (req, res) => {
   }
 };
 
+exports.getPublicAllPasar = async (req, res) => {
+  try {
+    const pasars = await data_pasar.findAll({
+      attributes: ["pasar_code", "pasar_nama"],
+      where: {
+        pasar_status: "A",
+      },
+      order: [["pasar_nama", "ASC"]],
+    });
+    res.status(200).json(pasars);
+  } catch (error) {
+    console.error("Failed to fetch public pasars:", error);
+    res.status(500).json({ message: "Failed to fetch public pasars." });
+  }
+};
+
+exports.getPasarById = async (req, res) => {
+  const { pasar_code } = req.params;
+
+  if (!pasar_code) {
+    return res.status(400).json({ message: "Kode pasar diperlukan." });
+  }
+
+  try {
+    const pasar = await data_pasar.findByPk(pasar_code);
+
+    res.status(200).json(pasar);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.editPasar = async (req, res) => {
   if (!req.user || !req.user.id || !req.user.level) {
     res
@@ -201,32 +245,45 @@ exports.editPasar = async (req, res) => {
 
   try {
     const { pasar_code } = req.params;
-    const { pasar_nama, pasar_status } = req.body;
+    const {
+      pasar_nama,
+      pasar_status,
+      pasar_qrcode,
+      pasar_tanggal_jatuh_tempo,
+    } = req.body;
 
     if (!pasar_nama || !pasar_status) {
       res.status(400).json({ message: "Nama dan status pasar diperlukan." });
     }
 
+    let dueDate = null;
+    if (pasar_tanggal_jatuh_tempo) {
+      // Ekstrak MM-DD dari YYYY-MM-DD
+      dueDate = pasar_tanggal_jatuh_tempo.substring(5);
+    }
+
     const pasar = await data_pasar.findOne({ where: { pasar_code } });
 
     if (!pasar) {
-      res.status(404).json({ message: "Pasar tidak ditemukan." });
+      return res.status(404).json({ message: "Pasar tidak ditemukan." });
     }
 
-    const fotoPasar = req.file ? req.file.filename : null;
+    const updateData = {
+      pasar_nama,
+      pasar_status,
+      pasar_qrcode: pasar_qrcode || null,
+      pasar_tanggal_jatuh_tempo: dueDate,
+    };
 
-    const data = await pasar.update(
-      {
-        pasar_nama,
-        pasar_status,
-        pasar_logo: fotoPasar || pasar.pasar_logo,
+    if (req.files?.pasar_logo?.[0]) {
+      updateData.pasar_logo = req.files.pasar_logo[0].filename;
+    }
+
+    const data = await pasar.update(updateData, {
+      logging: (query) => {
+        req.sqlQuery = query;
       },
-      {
-        logging: (query) => {
-          req.sqlQuery = query;
-        },
-      }
-    );
+    });
 
     const logSource = {
       user: req.user,

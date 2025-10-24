@@ -20,6 +20,7 @@ import { GrDocumentTime, GrGroup } from "react-icons/gr";
 import { MdHistory } from "react-icons/md";
 import { TbCashRegister } from "react-icons/tb";
 import { FaBuromobelexperte } from "react-icons/fa6";
+import { PiInvoiceDuotone} from "react-icons/pi";
 
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -274,6 +275,7 @@ type processedMenuData = Record<string, NavItem[]>;
 const iconMap: Record<string, React.ReactNode> = {
   Dashboard: <GridIcon />,
   "Iuran Management": <TbCashRegister />,
+  "Invoices": <PiInvoiceDuotone />,
   "Data Lapak": <FaBuromobelexperte />,
   Pedagang: <GrGroup />,
   "Data Pasar": (
@@ -616,7 +618,7 @@ const AppSidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <span className="text-2xl font-semibold text-gray-800 dark:text-white/90">
-                Pasar<span className="text-brand-500">Digital</span>
+                E-Retribusi<span className="text-brand-500">Pasar</span>
               </span>
             </>
           ) : (

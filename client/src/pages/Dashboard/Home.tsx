@@ -8,6 +8,8 @@ import RangeDatePicker from "../../components/form/RangeDatePicker";
 import { useDashboard } from "../../context/DashboardContext";
 import Button from "../../components/ui/button/Button";
 import IuranStatusPieChart from "../../components/dashboardCard/IuranStatusPieChart";
+import InvoiceStatsByPasar from "../../components/dashboardCard/InvoiceStatsByPasar";
+import PaymentStatsByPasar from "../../components/dashboardCard/PaymentStatsByPasar";
 
 
 export default function Home() {
@@ -59,7 +61,7 @@ export default function Home() {
   return (
     <>
       <PageMeta
-        title="Dashboard | PasarDigital"
+        title="Dashboard | E-Retribusi Pasar"
         description="This is React.js Ecommerce Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
       />
       {/* Main grid container for the dashboard layout */}
@@ -104,11 +106,17 @@ export default function Home() {
         <div className="col-span-12 md:col-span-6 lg:col-span-4">
           <IuranStatusPieChart />
         </div>
-        <div className="col-span-12 lg:col-span-7">
+        <div className="col-span-12 lg:col-span-12">
           <RecentIuran />
         </div>
-        <div className="col-span-12 lg:col-span-5">
+        <div className="col-span-12 lg:col-span-12">
           <StatisticsChart />
+        </div>
+        <div className="col-span-12 lg:col-span-6">
+          <InvoiceStatsByPasar />
+        </div>
+        <div className="col-span-12 lg:col-span-6">
+          <PaymentStatsByPasar />
         </div>
       </div>
     </>

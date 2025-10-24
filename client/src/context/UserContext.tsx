@@ -20,7 +20,7 @@ interface UserContextProps {
     search: string,
     statusFilter: string,
     pasar: string
-  ) => Promise<void>;
+  ) => Promise<{ totalPages: number; total?: number }>;
   addUser: (formData: FormData) => Promise<void>;
   editUser: (user_code: string, formData: FormData) => Promise<void>;
   deleteUser: (user_code: string) => Promise<void>;
@@ -55,7 +55,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     pasar = ""
   ) => {
     try {
-      const BASE_URL = "https://dev1-p3.palindo.id/uploads/";
+      const BASE_URL = "http://127.0.0.1:3001/uploads/";
       const res = await api.get(
         `/user?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&pasar=${pasar}`
       );
@@ -64,7 +64,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         user_foto: user.user_foto ? `${BASE_URL}${user.user_foto}` : null,
       }));
       setUsers(usersWithPhoto);
-      return { totalPages: res.data.totalPages };
+      return { totalPages: res.data.totalPages, total: res.data.total };
     } catch (error) {
       console.error("Failed to fetch users:", error);
       return { totalPages: 1 };
@@ -76,9 +76,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       await api.post("/user", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      await fetchUsers();
+      // Panggil fetchUsers dengan parameter default untuk memuat ulang halaman pertama
+      await fetchUsers(1, 10, "", "", "");
     } catch (error) {
       console.error("Failed to add user:", error);
+      throw error; // Lemparkan error agar komponen bisa menanganinya
     }
   };
 
@@ -87,18 +89,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       await api.put(`/user/${user_code}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      await fetchUsers();
+      // Panggil fetchUsers dengan parameter default untuk memuat ulang halaman pertama
+      await fetchUsers(1, 10, "", "", "");
     } catch (error) {
       console.error("Failed to edit user:", error);
+      throw error; // Lemparkan error agar komponen bisa menanganinya
     }
   };
 
   const deleteUser = async (user_code: string) => {
     try {
       await api.delete(`/user/${user_code}`);
-      await fetchUsers();
+      // Panggil fetchUsers dengan parameter default untuk memuat ulang halaman pertama
+      await fetchUsers(1, 10, "", "", "");
     } catch (error) {
       console.error("Failed to delete user:", error);
+      throw error; // Lemparkan error agar komponen bisa menanganinya
     }
   };
 

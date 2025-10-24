@@ -11,6 +11,7 @@ import Input from "../../components/form/input/InputField";
 import Button from "../../components/ui/button/Button";
 import Select from "../../components/form/Select";
 
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 import { useEffect, useState } from "react";
 import { useUserContext } from "../../context/UserContext";
 import { useDropdownContext } from "../../context/DropdownContext";
@@ -49,11 +50,22 @@ export default function UserTable() {
   const [page, setPage] = useState(1); // State for pagination
   const [limit, setLimit] = useState(10); // State for limit
   const [totalPages, setTotalPages] = useState(1); // Total pages from API
+  const [totalData, setTotalData] = useState(0); // Total data count from API
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const fetchUsersData = async () => {
     try {
-      const response = await fetchUsers(page, limit, search, statusFilter, pasar);
+      const response = await fetchUsers(
+        page,
+        limit,
+        search,
+        statusFilter,
+        pasar
+      );
       setTotalPages(response.totalPages); // Update total pages
+      setTotalData(response.total || 0); // Update total data count
     } catch (error) {
       console.error("Failed to fetch users:", error);
     }
@@ -63,7 +75,7 @@ export default function UserTable() {
 
   useEffect(() => {
     fetchAllPasars();
-}, []);
+  }, []);
 
   useEffect(() => {
     fetchUsersData();
@@ -99,10 +111,25 @@ export default function UserTable() {
     }
   };
 
-  const handleDeleteUser = async (user_code: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this user?");
-    if (!confirmDelete) return;
-    await deleteUser(user_code);
+  const handleDeleteUser = (user: User) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (userToDelete) {
+      setIsDeleting(true);
+      try {
+        await deleteUser(userToDelete.user_code);
+      } catch (error) {
+        console.error("Failed to delete user:", error);
+        alert("Failed to delete user.");
+      } finally {
+        setIsDeleting(false);
+        setIsDeleteModalOpen(false);
+        setUserToDelete(null);
+      }
+    }
   };
 
   return (
@@ -115,20 +142,26 @@ export default function UserTable() {
               setLimit(Number(value));
               setPage(1); // Reset to first page
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Input
             type="text"
             placeholder="Search by name, email or phone"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 border rounded w-full sm:w-auto"
           />
           <Select
             options={statusOptions}
-            onChange={(value) => setStatusFilter(value)}
-            defaultValue=""
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            value={statusFilter}
             placeholder="All Status"
             className="w-full sm:w-auto"
           />
@@ -141,15 +174,15 @@ export default function UserTable() {
               })),
             ]}
             placeholder="All Pasars"
-            onChange={(value) => setPasar(value)}
-            defaultValue=""
+            onChange={(value) => {
+              setPasar(value);
+              setPage(1);
+            }}
+            value={pasar}
             className="w-full sm:w-auto"
           />
         </div>
-        <Button
-          onClick={openAddModal}
-          className="w-full sm:w-auto"
-        >
+        <Button onClick={openAddModal} className="w-full sm:w-auto">
           Add User
         </Button>
       </div>
@@ -235,7 +268,7 @@ export default function UserTable() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDeleteUser(user.user_code)}
+                    onClick={() => handleDeleteUser(user)}
                     className="ml-2 text-red-500 hover:underline"
                   >
                     Delete
@@ -251,17 +284,17 @@ export default function UserTable() {
         <Button
           disabled={page === 1}
           onClick={() => setPage(page - 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          className="px-4 py-2 bg-blue-200 rounded disabled:opacity-50"
         >
           Previous
         </Button>
         <span className="text-gray-700 dark:text-gray-400">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} ({totalData} total entries)
         </span>
         <Button
           disabled={page === totalPages}
           onClick={() => setPage(page + 1)}
-          className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
+          className="px-4 py-2 bg-blue-200 rounded disabled:opacity-50"
         >
           Next
         </Button>
@@ -272,6 +305,15 @@ export default function UserTable() {
         onClose={closeModal}
         user={isEditModalOpen ? selectedUser : null}
         onSave={handleSaveUser}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteUser}
+        title="Delete User"
+        message={`Are you sure you want to delete user "${userToDelete?.user_name}"? This action cannot be undone.`}
+        isConfirming={isDeleting}
       />
     </div>
   );

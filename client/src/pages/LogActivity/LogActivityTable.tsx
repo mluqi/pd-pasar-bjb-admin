@@ -46,6 +46,7 @@ export default function LogActivityTable() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0); // Total data count from API
 
   const fetchLogActivityData = async () => {
     try {
@@ -60,6 +61,7 @@ export default function LogActivityTable() {
         endDate
       );
       setTotalPages(response.totalPages);
+      setTotalData(response.total || 0); // Update total data count
     } catch (error) {
       console.error("Failed to fetch log activities:", error);
     }
@@ -78,7 +80,10 @@ export default function LogActivityTable() {
             type="text"
             placeholder="Search by keyword"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 border rounded w-full sm:w-auto flex-grow"
           />
           <Select
@@ -87,18 +92,26 @@ export default function LogActivityTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Select
             options={actionOptions}
-            onChange={(value) => setActionFilter(value)}
+            onChange={(value) => {
+              setActionFilter(value);
+              setPage(1);
+            }}
             placeholder="All Actions"
             className="w-full sm:w-auto"
+            value={actionFilter}
           />
           <Select
             options={statusOptions}
-            onChange={(value) => setStatus(value)}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
+            value={status}
             placeholder="All Status"
             className="w-full sm:w-auto"
           />
@@ -108,6 +121,7 @@ export default function LogActivityTable() {
             defaultDates={dateRange}
             onChange={(dates) => {
               setDateRange(dates);
+              setPage(1);
             }}
           />
         </div>
@@ -228,7 +242,7 @@ export default function LogActivityTable() {
           Previous
         </Button>
         <span className="dark:text-gray-400">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} ({totalData} total entries)
         </span>
         <Button
           disabled={page === totalPages}

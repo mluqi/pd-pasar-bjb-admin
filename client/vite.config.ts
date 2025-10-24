@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    allowedHosts: ['dev1-p3.palindo.id'],
+    allowedHosts: ["dev1-p3.palindo.id"],
     proxy: {
       "/api": {
         target: "http://127.0.0.1:3001",
@@ -26,4 +26,3 @@ export default defineConfig({
     },
   },
 });
-

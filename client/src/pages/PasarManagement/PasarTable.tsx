@@ -9,9 +9,12 @@ import Badge from "../../components/ui/badge/Badge";
 import Input from "../../components/form/input/InputField";
 import Button from "../../components/ui/button/Button";
 import Select from "../../components/form/Select";
+import { Modal } from "../../components/ui/modal";
+import ConfirmationModal from "../../components/ui/ConfirmationModal";
 
 import { usePasarContext } from "../../context/PasarContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, FC } from "react";
+import QRCode from "qrcode";
 
 const statusOptions = [
   { value: "", label: "All Status" },
@@ -31,6 +34,8 @@ interface Pasar {
   pasar_nama: string;
   pasar_logo: string | null;
   pasar_status: string;
+  pasar_qrcode: string | null; // This is now the QR content string
+  pasar_tanggal_jatuh_tempo?: string | null;
 }
 
 import PasarModal from "./PasarModal";
@@ -47,20 +52,29 @@ export default function PasarTable() {
   const [page, setPage] = useState(1); // State for pagination
   const [limit, setLimit] = useState(10); // State for limit
   const [totalPages, setTotalPages] = useState(1); // Total pages from API
+  const [totalData, setTotalData] = useState(0); // Total data count from API
 
-  const fetchPasarsData = async () => {
-    try {
-      const response = await fetchPasars(page, limit, search, statusFilter);
-      setTotalPages(response.totalPages); // Update total pages
-    } catch (error) {
-      console.error("Failed to fetch pasars:", error);
-    }
-  };
+  const [isQrPreviewModalOpen, setIsQrPreviewModalOpen] = useState(false);
+  const [qrPreviewContent, setQrPreviewContent] = useState<string | null>(null);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [pasarToDelete, setPasarToDelete] = useState<Pasar | null>(null);
 
   // Panggil fetchPasarsData setiap kali page, limit, search, atau statusFilter berubah
   useEffect(() => {
+    const fetchPasarsData = async () => {
+      try {
+        const response = await fetchPasars(page, limit, search, statusFilter);
+        setTotalPages(response.totalPages); // Update total pages
+        setTotalData(response.total || 0); // Update total data count
+      } catch (error) {
+        console.error("Failed to fetch pasars:", error);
+      }
+    };
+
     fetchPasarsData();
-  }, [page, limit, search, statusFilter]);
+  }, [page, limit, search, statusFilter, fetchPasars]);
 
   const openEditModal = (pasar: Pasar) => {
     setSelectedPasar(pasar);
@@ -78,6 +92,16 @@ export default function PasarTable() {
     setSelectedPasar(null);
   };
 
+  const openQrPreviewModal = (content: string) => {
+    setQrPreviewContent(content);
+    setIsQrPreviewModalOpen(true);
+  };
+
+  const closeQrPreviewModal = () => {
+    setIsQrPreviewModalOpen(false);
+    setQrPreviewContent(null);
+  };
+
   const handleSavePasar = async (formData: FormData) => {
     if (selectedPasar) {
       await editPasar(selectedPasar.pasar_code, formData);
@@ -87,12 +111,49 @@ export default function PasarTable() {
     closeModal();
   };
 
-  const handleDeletePasar = async (pasar_code: string) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this pasar?"
-    );
-    if (!confirmDelete) return;
-    await deletePasar(pasar_code);
+  const handleDeletePasar = (pasar: Pasar) => {
+    setPasarToDelete(pasar);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeletePasar = async () => {
+    if (pasarToDelete) {
+      setIsDeleting(true);
+      try {
+        await deletePasar(pasarToDelete.pasar_code);
+      } catch (error) {
+        console.error("Failed to delete pasar:", error);
+        alert("Failed to delete pasar.");
+      } finally {
+        setIsDeleting(false);
+        setIsDeleteModalOpen(false);
+        setPasarToDelete(null);
+      }
+    }
+  };
+
+  // Helper component to display QR code from content string
+  const QrImage: FC<{
+    content: string | null;
+    className: string;
+    alt: string;
+  }> = ({ content, className, alt }) => {
+    const [src, setSrc] = useState("/images/logo/no-logo.png");
+
+    useEffect(() => {
+      if (content) {
+        QRCode.toDataURL(content)
+          .then(setSrc)
+          .catch((err) => {
+            console.error("Failed to generate QR code:", err);
+            setSrc("/images/logo/no-logo.png");
+          });
+      } else {
+        setSrc("/images/logo/no-logo.png");
+      }
+    }, [content]);
+
+    return <img src={src} alt={alt} className={className} />;
   };
 
   return (
@@ -105,20 +166,26 @@ export default function PasarTable() {
               setLimit(Number(value));
               setPage(1);
             }}
-            defaultValue={limit.toString()}
+            value={limit.toString()}
             className="w-full sm:w-auto"
           />
           <Input
             type="text"
             placeholder="Search by name"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             className="px-4 py-2 border rounded w-full sm:w-auto"
           />
           <Select
             options={statusOptions}
-            onChange={(value) => setStatusFilter(value)}
-            defaultValue=""
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            value={statusFilter}
             placeholder="All Status"
             className="w-full sm:w-auto"
           />
@@ -131,7 +198,15 @@ export default function PasarTable() {
         <Table>
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
-              {["Code", "Name", "Logo", "Status", "Actions"].map((title) => (
+              {[
+                "Code",
+                "Name",
+                "Logo",
+                "QR Code",
+                "Jatuh Tempo",
+                "Status",
+                "Actions",
+              ].map((title) => (
                 <TableCell
                   key={title}
                   isHeader
@@ -161,14 +236,40 @@ export default function PasarTable() {
                     />
                   </div>
                 </TableCell>
+                <TableCell className="px-5 py-3">
+                  <div
+                    onClick={() =>
+                      pasar.pasar_qrcode &&
+                      openQrPreviewModal(pasar.pasar_qrcode)
+                    }
+                    className={`w-10 h-10 overflow-hidden rounded-md border-2 border-white dark:border-gray-800 ${
+                      pasar.pasar_qrcode ? "cursor-pointer" : "cursor-default"
+                    }`}
+                  >
+                    <QrImage
+                      content={pasar.pasar_qrcode}
+                      alt="QR Code"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="px-5 py-3 text-theme-sm text-gray-700 dark:text-white/90">
+                  {pasar.pasar_tanggal_jatuh_tempo
+                    ? // Buat tanggal sementara dengan tahun ini untuk formatting
+                      new Date(
+                        `${new Date().getFullYear()}-${
+                          pasar.pasar_tanggal_jatuh_tempo
+                        }`
+                      ).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "long",
+                      })
+                    : "-"}
+                </TableCell>
                 <TableCell className="px-5 py-3 text-theme-sm">
                   <Badge
                     size="sm"
-                    color={
-                      pasar.pasar_status === "A"
-                        ? "success"
-                        : "error"
-                    }
+                    color={pasar.pasar_status === "A" ? "success" : "error"}
                   >
                     {pasar.pasar_status === "A" ? "Active" : "Nonactive"}
                   </Badge>
@@ -181,7 +282,7 @@ export default function PasarTable() {
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDeletePasar(pasar.pasar_code)}
+                    onClick={() => handleDeletePasar(pasar)}
                     className="ml-2 text-red-500 hover:underline"
                   >
                     Delete
@@ -197,7 +298,7 @@ export default function PasarTable() {
           Previous
         </Button>
         <span className="text-gray-700 dark:text-gray-400">
-          Page {page} of {totalPages}
+          Page {page} of {totalPages} ({totalData} total entries)
         </span>
         <Button
           disabled={page === totalPages}
@@ -213,6 +314,39 @@ export default function PasarTable() {
         pasar={isEditModalOpen ? selectedPasar : null}
         onSave={handleSavePasar}
       />
+
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeletePasar}
+        title="Delete Pasar"
+        message={`Are you sure you want to delete pasar "${pasarToDelete?.pasar_nama}"? This action cannot be undone.`}
+        isConfirming={isDeleting}
+      />
+
+      <Modal
+        isOpen={isQrPreviewModalOpen}
+        onClose={closeQrPreviewModal}
+        className="max-w-xs"
+      >
+        <div className="p-4 bg-white dark:bg-gray-900 rounded-lg">
+          <h4 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white/90">
+            QR Code Preview
+          </h4>
+          {qrPreviewContent && (
+            <QrImage
+              content={qrPreviewContent}
+              alt="QR Code Preview"
+              className="w-full h-auto rounded-md"
+            />
+          )}
+          <div className="flex justify-end mt-4">
+            <Button variant="outline" onClick={closeQrPreviewModal}>
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

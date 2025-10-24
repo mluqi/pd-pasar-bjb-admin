@@ -28,7 +28,7 @@ interface IuranContextProps {
     metodeBayarFilter: string,
     startDate: string,
     endDate: string
-  ) => Promise<void>;
+  ) => Promise<{ totalPages: number; total?: number }>;
   addIuran: (formData: FormData) => Promise<void>;
   editIuran: (IURAN_CODE: string, formData: FormData) => Promise<void>;
   deleteIuran: (IURAN_CODE: string) => Promise<void>;
@@ -54,7 +54,7 @@ export const IuranProvider: React.FC<{ children: React.ReactNode }> = ({
         `/iuran?page=${page}&limit=${limit}&search=${search}&status=${statusFilter}&metode=${metodeBayarFilter}&startDate=${startDate}&endDate=${endDate}`
       );
       setIurans(res.data.data);
-      return { totalPages: res.data.totalPages };
+      return { totalPages: res.data.totalPages, total: res.data.total };
     } catch (error) {
       console.error("Failed to fetch iurans:", error);
       return { totalPages: 1 };

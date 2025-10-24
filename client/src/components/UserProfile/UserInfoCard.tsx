@@ -6,7 +6,7 @@ import Label from "../form/Label";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 
-const BASE_URL = "https://dev1-p3.palindo.id/uploads/";
+const BASE_URL = "http://127.0.0.1:3001/uploads/";
 import api from "../../services/api";
 import FileInput from "../form/input/FileInput";
 
@@ -80,12 +80,6 @@ export default function UserInfoCard() {
       const response = await api.put(`/auth/profile`, formData);
 
       console.log("Profile update response:", response.data);
-
-      const profileResponse = await api.get(`/auth/profile`);
-      const updatedUser = profileResponse.data;
-      updatedUser.user_foto = updatedUser.user_foto
-        ? `${BASE_URL}${updatedUser.user_foto}`
-        : null;
 
       setNewPhoto(null);
       setPreviewPhoto(null);

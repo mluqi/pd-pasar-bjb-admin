@@ -19,6 +19,7 @@ import TypeLapak from "./pages/TypeLapak/Page";
 import ResetPasswordPage from "./pages/ResetPassword/ResetPasswordPage";
 import PedagangDetail from "./pages/Pedagang/PedagangDetail";
 import LapakQrPage from "./pages/Lapak/LapakQrPage";
+import MultiLapakQrPage from "./pages/Lapak/MultiLapakQrPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { PasarProvider } from "./context/PasarContext";
 import { UserProvider } from "./context/UserContext";
@@ -30,11 +31,14 @@ import { LogProvider } from "./context/LogContext";
 import { LapakTypeProvider } from "./context/LapakTypeContext";
 import { DropdownProvider } from "./context/DropdownContext";
 import { DashboardProvider } from "./context/DashboardContext";
+import ConfirmationPayment from "./pages/ConfirmationPayment/Page";
+import InvoicesPage from "./pages/Invoices/Page";
+import { InvoiceProvider } from "./context/InvoiceContext";
 
 // Component to handle root redirect logic
 const RootRedirect = () => {
   const { isAuthenticated, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -45,11 +49,11 @@ const RootRedirect = () => {
       </div>
     );
   }
-  
+
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <Navigate to="/signin" replace />;
 };
 
@@ -78,7 +82,10 @@ const ProtectedRoutesWrapper = () => {
     return (
       <Routes>
         <Route path="/" element={<Navigate to="/signin" replace />} />
-        <Route path="/unauthorized" element={<Navigate to="/signin" replace />} />
+        <Route
+          path="/unauthorized"
+          element={<Navigate to="/signin" replace />}
+        />
         <Route path="*" element={<PublicNotFound />} />
       </Routes>
     );
@@ -96,46 +103,86 @@ const ProtectedRoutesWrapper = () => {
                   <LapakTypeProvider>
                     <IuranProvider>
                       <DashboardProvider>
-                        <Routes>
-                          {/* Root redirect with auth logic */}
-                          <Route path="/" element={<RootRedirect />} />
+                        <InvoiceProvider>
+                          <Routes>
+                            {/* Root redirect with auth logic */}
+                            <Route path="/" element={<RootRedirect />} />
 
-                          {/* Unauthorized Page - accessible when authenticated */}
-                          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                            {/* Unauthorized Page - accessible when authenticated */}
+                            <Route
+                              path="/unauthorized"
+                              element={<UnauthorizedPage />}
+                            />
 
-                          {/* Dashboard Layout with Authorization Check */}
-                          <Route element={<AppLayout />}>
-                            <Route element={<ProtectedRoute />}>
-                              <Route path="/dashboard" element={<Home />} />
-                              <Route path="/user-management" element={<UserManagement />} />
-                              <Route path="/pasar-management" element={<PasarManagement />} />
-                              <Route path="/lapak-management" element={<Lapak />} />
-                              <Route path="/iuran-management" element={<Iuran />} />
-                              <Route path="/pedagang-management" element={<Pedagang />} />
-                              <Route path="/log-akses" element={<LogAkses />} />
-                              <Route path="/log-activity" element={<LogActivity />} />
-                              <Route path="/tipe-lapak" element={<TypeLapak />} />
+                            {/* Dashboard Layout with Authorization Check */}
+                            <Route element={<AppLayout />}>
+                              <Route element={<ProtectedRoute />}>
+                                <Route path="/dashboard" element={<Home />} />
+                                <Route
+                                  path="/user-management"
+                                  element={<UserManagement />}
+                                />
+                                <Route
+                                  path="/pasar-management"
+                                  element={<PasarManagement />}
+                                />
+                                <Route
+                                  path="/lapak-management"
+                                  element={<Lapak />}
+                                />
+                                <Route
+                                  path="/iuran-management"
+                                  element={<Iuran />}
+                                />
+                                <Route
+                                  path="/invoices"
+                                  element={<InvoicesPage />}
+                                />
+                                <Route
+                                  path="/pedagang-management"
+                                  element={<Pedagang />}
+                                />
+                                <Route
+                                  path="/log-akses"
+                                  element={<LogAkses />}
+                                />
+                                <Route
+                                  path="/log-activity"
+                                  element={<LogActivity />}
+                                />
+                                <Route
+                                  path="/tipe-lapak"
+                                  element={<TypeLapak />}
+                                />
 
-                              {/* Others Page */}
-                              <Route path="/profile" element={<UserProfiles />} />
-                              <Route 
-                                path="/user-management/reset-password/:userCode" 
-                                element={<ResetPasswordPage />} 
-                              />
-                              <Route 
-                                path="/pedagang-management/detail/:custCode" 
-                                element={<PedagangDetail />} 
-                              />
-                              <Route 
-                                path="/lapak-management/qrcode/:lapakCode" 
-                                element={<LapakQrPage />} 
-                              />
+                                {/* Others Page */}
+                                <Route
+                                  path="/profile"
+                                  element={<UserProfiles />}
+                                />
+                                <Route
+                                  path="/user-management/reset-password/:userCode"
+                                  element={<ResetPasswordPage />}
+                                />
+                                <Route
+                                  path="/pedagang-management/detail/:custCode"
+                                  element={<PedagangDetail />}
+                                />
+                                <Route
+                                  path="/lapak-management/qrcode/:lapakCode"
+                                  element={<LapakQrPage />}
+                                />
+                                <Route
+                                  path="/lapak-management/qrcodes"
+                                  element={<MultiLapakQrPage />}
+                                />
+                              </Route>
                             </Route>
-                          </Route>
 
-                          {/* Fallback Route for authenticated users */}
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
+                            {/* Fallback Route for authenticated users */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </InvoiceProvider>
                       </DashboardProvider>
                     </IuranProvider>
                   </LapakTypeProvider>
@@ -156,6 +203,7 @@ export default function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/signin" element={<SignIn />} />
+        <Route path="/confirmation-payment" element={<ConfirmationPayment />} />
         {/* <Route path="/signup" element={<SignUp />} /> */}
 
         {/* All other routes with AuthProvider */}
