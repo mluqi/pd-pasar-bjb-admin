@@ -15,10 +15,11 @@ interface Lapak {
 interface PedagangInfo {
   CUST_NAMA: string;
   CUST_NIK: string;
-  CUST_IURAN: string;
   pasar: {
     pasar_nama: string;
   };
+  invoice_type: string;
+  invoice_nominal: number;
   lapaks: Lapak[];
 }
 
@@ -134,12 +135,13 @@ const ConfirmationPaymentForm = () => {
       // Check if the response contains a message (e.g., "Tidak ada tagihan", "Invoice sudah terbayar")
       if (data.message) {
         setError(data.message);
-      } else {
-        // If no message, it means we got the pedagang data for a pending invoice
+      } else if (data.pedagang && data.invoice) {
+        // If no message, it means we got the pedagang and invoice data
         setPedagangInfo({
-          CUST_NAMA: data.CUST_NAMA,
-          CUST_NIK: data.CUST_NIK,
-          CUST_IURAN: data.CUST_IURAN || "0",
+          CUST_NAMA: data.pedagang.CUST_NAMA,
+          CUST_NIK: data.pedagang.CUST_NIK,
+          invoice_type: data.invoice.invoice_type,
+          invoice_nominal: data.invoice.invoice_nominal,
           lapaks: data.lapaks || [],
           pasar: data.pasar,
         });
@@ -354,14 +356,24 @@ const ConfirmationPaymentForm = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cust_iuran">Jumlah Iuran</Label>
+                  <Label htmlFor="invoice_type">Jenis Tagihan</Label>
                   <InputField
-                    id="cust_iuran"
+                    id="invoice_type"
+                    value={pedagangInfo.invoice_type
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())}
+                    disabled
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_nominal">Nominal Tagihan</Label>
+                  <InputField
+                    id="invoice_nominal"
                     value={new Intl.NumberFormat("id-ID", {
                       style: "currency",
                       currency: "IDR",
                       minimumFractionDigits: 0,
-                    }).format(Number(pedagangInfo.CUST_IURAN))}
+                    }).format(pedagangInfo.invoice_nominal)}
                     disabled
                   />
                 </div>

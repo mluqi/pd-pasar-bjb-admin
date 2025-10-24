@@ -228,7 +228,9 @@ exports.getInvoiceStatusByCode = async (req, res) => {
     });
 
     if (!invoice) {
-      return res.status(200).json({ message: "Tidak ada tagihan" });
+      return res.status(200).json({
+        message: `Tidak ada tagihan yang perlu dibayar untuk pedagang "${pedagang.CUST_NAMA}".`,
+      });
     }
 
     if (invoice.invoice_status === "waiting") {
@@ -242,7 +244,12 @@ exports.getInvoiceStatusByCode = async (req, res) => {
     }
 
     // Jika status 'pending'
-    return res.status(200).json(pedagang);
+    return res.status(200).json({
+      pedagang: pedagang,
+      invoice: invoice,
+      lapaks: pedagang.lapaks,
+      pasar: pedagang.pasar,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error.message });
